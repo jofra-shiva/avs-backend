@@ -1,0 +1,16 @@
+const mongoose = require('mongoose');
+
+const productionTargetSchema = mongoose.Schema({
+  productName: { type: String, required: true },
+  sku: { type: String, required: true },
+  productSize: { type: String, required: true },
+  targetQty: { type: Number, required: true },
+  producedQty: { type: Number, default: 0 },
+  remainingQty: { type: Number, required: true },
+  status: { type: String, enum: ['pending', 'in-progress', 'completed'], default: 'pending' },
+  unit: { type: String, default: 'Pieces' },
+  size: { type: String },
+  date: { type: String, required: true }, // Store as YYYY-MM-DD
+}, { timestamps: true });
+
+module.exports = mongoose.model('ProductionTarget', productionTargetSchema);
