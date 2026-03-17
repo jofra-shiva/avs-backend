@@ -83,6 +83,35 @@ app.use('/api/attendance', attendanceRoutes);
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.get('/favicon.png', (req, res) => res.status(204).end());
 
+// Emergency repair route - visit this in browser if local connection is blocked
+app.get('/api/repair-database', async (req, res) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const User = require('./models/User');
+    const salt = await bcrypt.genSalt(10);
+    const hash1234 = await bcrypt.hash('12345678', salt);
+    const hashTest = await bcrypt.hash('test1234', salt);
+    
+    // Repair Admin
+    await User.updateOne(
+      { email: 'admin@avseco.in' },
+      { $set: { name: 'Admin User', password: hash1234, role: 'admin' } }, 
+      { upsert: true }
+    );
+    
+    // Create/Repair Test User
+    await User.updateOne(
+      { email: 'test@avseco.in' },
+      { $set: { name: 'Test User', password: hashTest, role: 'user' } }, 
+      { upsert: true }
+    );
+    
+    res.send('<h1>✅ Database Repaired Successfully!</h1><p>Admin: admin@avseco.in (12345678)</p><p>Test: test@avseco.in (test1234)</p>');
+  } catch (err) {
+    res.status(500).send('Error: ' + err.message);
+  }
+});
+
 // Root route
 app.get('/', (req, res) => {
   res.send('AVSECO API is running...');
