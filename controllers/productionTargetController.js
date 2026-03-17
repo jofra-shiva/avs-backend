@@ -22,13 +22,14 @@ const createOrUpdateTarget = async (req, res) => {
     let target = await ProductionTarget.findOne({ productSize });
 
     if (target) {
-      // Update existing
-      target = await ProductionTarget.findOneAndUpdate(
-        { productSize },
-        req.body,
-        { new: true }
-      );
-      res.json(target);
+      // Add to existing target
+      target.targetQty += parseInt(req.body.targetQty);
+      target.remainingQty += parseInt(req.body.targetQty);
+      target.status = target.producedQty >= target.targetQty ? 'completed' :
+                      target.producedQty > 0 ? 'in-progress' : 'pending';
+      
+      const updatedTarget = await target.save();
+      res.json(updatedTarget);
     } else {
       // Create new
       const newTarget = await ProductionTarget.create(req.body);

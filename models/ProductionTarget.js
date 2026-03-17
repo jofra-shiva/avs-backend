@@ -13,4 +13,8 @@ const productionTargetSchema = mongoose.Schema({
   date: { type: String, required: true }, // Store as YYYY-MM-DD
 }, { timestamps: true });
 
+// Add indexes for faster fetching
+productionTargetSchema.index({ productSize: 1 });
+productionTargetSchema.index({ date: -1 });
+
 module.exports = mongoose.model('ProductionTarget', productionTargetSchema);

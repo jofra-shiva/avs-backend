@@ -13,10 +13,15 @@ const connectDB = async () => {
 
   if (!cached.promise) {
     const opts = {
-      bufferCommands: false,
-      serverSelectionTimeoutMS: 10000, // 10s timeout
+      bufferCommands: true,
+      serverSelectionTimeoutMS: 5000, 
       socketTimeoutMS: 45000,
-      family: 4 // Force IPv4
+      family: 4,
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      minPoolSize: 2,  // Maintain at least 2 socket connections
+      heartbeatFrequencyMS: 10000,
+      retryWrites: true,
+      autoIndex: true, // Auto-create indexes (recommended for development/small apps)
     };
 
     if (!process.env.MONGO_URI) {
