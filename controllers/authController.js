@@ -49,11 +49,14 @@ const registerUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
+
+    // Sanitize email
+    email = email.trim().toLowerCase();
 
     const user = await User.findOne({ email });
 

@@ -18,9 +18,6 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const productionRoutes = require('./routes/productionRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 
-// Connect to database
-connectDB();
-
 const app = express();
 
 // Body parser
@@ -35,7 +32,6 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
@@ -48,7 +44,29 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
-// Handle preflight automatically with cors middleware handled above
+// Middleware to ensure DB connection
+app.use(async (req, res, next) => {
+  try {
+    const conn = await connectDB();
+    if (!conn) {
+      return res.status(500).json({ 
+        message: 'Database Connection Error. Please verify MONGO_URI and IP Whitelisting.' 
+      });
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Basic health check for development & heartbeat
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    timestamp: new Date()
+  });
+});
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -60,20 +78,10 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/production', productionRoutes);
 app.use('/api/attendance', attendanceRoutes);
 
-// Static files for production
-const __dirname1 = path.resolve();
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname1, '../frontend/build')));
-
-  app.get('(.*)', (req, res) =>
-    res.sendFile(path.resolve(__dirname1, '..', 'frontend', 'build', 'index.html'))
-  );
-} else {
-  // Basic health check for development
-  app.get('/', (req, res) => {
-    res.send('AVSECO API is running...');
-  });
-}
+// Root route
+app.get('/', (req, res) => {
+  res.send('AVSECO API is running...');
+});
 
 // Error middleware
 app.use(notFound);
