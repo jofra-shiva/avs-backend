@@ -79,6 +79,10 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/production', productionRoutes);
 app.use('/api/attendance', attendanceRoutes);
 
+// Silent favicon handler to prevent 404 logs
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+app.get('/favicon.png', (req, res) => res.status(204).end());
+
 // Root route
 app.get('/', (req, res) => {
   res.send('AVSECO API is running...');
