@@ -55,12 +55,20 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
 
-    // Sanitize email
     email = email.trim().toLowerCase();
+    console.log(`Login attempt for: ${email}`);
 
     const user = await User.findOne({ email });
 
-    if (user && (await user.matchPassword(password))) {
+    if (!user) {
+      console.log(`Login failed: User ${email} not found in database.`);
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    const isMatch = await user.matchPassword(password);
+    console.log(`Password match result for ${email}: ${isMatch}`);
+
+    if (isMatch) {
       res.json({
         _id: user._id,
         name: user.name,
@@ -72,8 +80,8 @@ const loginUser = async (req, res) => {
       res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {
-    console.error('Login Error:', error);
-    res.status(500).json({ message: 'Server Error during login: ' + error.message });
+    console.error('Login Technical Error:', error);
+    res.status(500).json({ message: 'Server Error: ' + error.message });
   }
 };
 
