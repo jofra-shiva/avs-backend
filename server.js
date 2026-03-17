@@ -28,7 +28,7 @@ app.use(express.json());
 
 // Enable CORS
 app.use(cors({
-  origin: ['https://avseco-f.vercel.app', 'http://localhost:3000', process.env.FRONTEND_URL].filter(Boolean),
+  origin: 'https://avseco-f.vercel.app',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -73,4 +73,6 @@ app.listen(PORT, () => {
     `Server running in ${process.env.NODE_ENV} mode on port ${PORT}`
   );
 });
+
+module.exports = app;
 
