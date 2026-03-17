@@ -69,6 +69,7 @@ const loginUser = async (req, res) => {
     console.log(`Password match result for ${email}: ${isMatch}`);
 
     if (isMatch) {
+      console.log(`✅ Login SUCCESS for ${email}`);
       res.json({
         _id: user._id,
         name: user.name,
@@ -77,6 +78,7 @@ const loginUser = async (req, res) => {
         token: generateToken(user._id),
       });
     } else {
+      console.log(`❌ Login FAILED: Password mismatch for ${email}`);
       res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {
