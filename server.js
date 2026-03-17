@@ -34,8 +34,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Handle preflight
-app.options('*', cors());
+// Handle preflight - Fixed for Express 5
+app.options('(.*)', cors());
 
 // API Routes
 app.use('/api/auth', authRoutes);
