@@ -10,6 +10,7 @@ const productionTargetSchema = mongoose.Schema({
   status: { type: String, enum: ['pending', 'in-progress', 'completed'], default: 'pending' },
   unit: { type: String, default: 'Pieces' },
   size: { type: String },
+  operator: { type: String, default: 'Rajesh' },
   date: { type: String, required: true }, // Store as YYYY-MM-DD
 }, { timestamps: true });
 

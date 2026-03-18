@@ -16,10 +16,10 @@ const getProductionTargets = async (req, res) => {
 // @route   POST /api/production-targets
 // @access  Private
 const createOrUpdateTarget = async (req, res) => {
-  const { productSize, date } = req.body;
+  const { productSize, operator, date } = req.body;
   try {
-    // Check if target already exists for this size
-    let target = await ProductionTarget.findOne({ productSize });
+    // Check if target already exists for this size/operator combo
+    let target = await ProductionTarget.findOne({ productSize, operator });
 
     if (target) {
       // Add to existing target
