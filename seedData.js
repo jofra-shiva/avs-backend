@@ -60,10 +60,10 @@ const expensesData = [
 ];
 
 const productsData = [
-    { size: "6-inch", stock: 15200, value: "₹15.2 L" },
-    { size: "8-inch", stock: 11800, value: "₹11.8 L" },
-    { size: "10-inch", stock: 9200, value: "₹9.2 L" },
-    { size: "12-inch", stock: 7600, value: "₹7.6 L" },
+    { name: "Areca Plate", sku: "ARP-6RND-01", size: "6-inch", stock: 15200, value: "₹15.2 L", costPrice: 2, sellPrice: 4 },
+    { name: "Areca Plate", sku: "ARP-8RND-01", size: "8-inch", stock: 11800, value: "₹11.8 L", costPrice: 3, sellPrice: 6 },
+    { name: "Areca Plate", sku: "ARP-10RND-01", size: "10-inch", stock: 9200, value: "₹9.2 L", costPrice: 4, sellPrice: 8 },
+    { name: "Areca Plate", sku: "ARP-12RND-01", size: "12-inch", stock: 7600, value: "₹7.6 L", costPrice: 5, sellPrice: 10 },
 ];
 
 const productionData = [

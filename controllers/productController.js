@@ -34,11 +34,13 @@ const createProduct = async (req, res) => {
 // @access  Private
 const updateProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true, runValidators: true }
+    );
 
-    if (product) {
-      Object.assign(product, req.body);
-      const updatedProduct = await product.save();
+    if (updatedProduct) {
       res.json(updatedProduct);
     } else {
       res.status(404).json({ message: 'Product not found' });
