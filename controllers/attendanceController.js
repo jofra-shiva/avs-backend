@@ -5,12 +5,14 @@ const Attendance = require('../models/Attendance');
 // @access  Private
 const getAttendanceByDate = async (req, res) => {
   try {
-    const records = await Attendance.find({ date: req.params.date });
+    const dateStr = req.params.date; // Expected: YYYY-MM-DD
+    const records = await Attendance.find({ date: dateStr }).populate('employee', 'name department empId');
     res.json(records);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // @desc    Upsert attendance records (multiple)
 // @route   POST /api/attendance/bulk
