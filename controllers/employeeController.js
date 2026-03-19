@@ -33,17 +33,9 @@ const getEmployeeById = async (req, res) => {
 // @access  Private
 const createEmployee = async (req, res) => {
   try {
-    const { empId, name, department, email, phone, joinDate, dob, aadhar, pan, address, salary } = req.body;
-
-    const employeeExists = await Employee.findOne({ empId });
-
-    if (employeeExists) {
-      res.status(400).json({ message: 'Employee ID already exists' });
-      return;
-    }
+    const { name, department, email, phone, joinDate, dob, aadhar, pan, address, salary } = req.body;
 
     const employee = await Employee.create({
-      empId,
       name,
       department,
       email,
