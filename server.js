@@ -46,7 +46,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
-// Middleware to ensure DB connection
+let indexCleaned = false;
 app.use(async (req, res, next) => {
   try {
     const conn = await connectDB();
@@ -55,6 +55,25 @@ app.use(async (req, res, next) => {
         message: 'Database Connection Error. Please verify MONGO_URI and IP Whitelisting.' 
       });
     }
+
+    // Vercel-compatible: Cleanup broken database index on the FIRST request after server start
+    if (!indexCleaned) {
+      try {
+        const Product = require('./models/Product');
+        // Drop the problematic unique index on the 'size' field
+        await Product.collection.dropIndex("size_1");
+        console.log("Successfully removed broken unique index on 'size'");
+        indexCleaned = true;
+      } catch (err) {
+        // Error code 27 means the index doesn't exist, which is fine
+        if (err.code === 27) {
+          indexCleaned = true; 
+        } else {
+          console.log("Database index cleanup note:", err.message);
+        }
+      }
+    }
+
     next();
   } catch (error) {
     next(error);
