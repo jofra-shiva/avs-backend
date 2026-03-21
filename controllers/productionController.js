@@ -51,11 +51,16 @@ const createProduction = async (req, res) => {
     if (existing) {
       existing.quantity += qty;
       existing.time = time;
+      existing.recordedBy = req.employee?.name || 'Unknown';
       await existing.save();
       return res.status(200).json(existing);
     }
 
-    const record = await Production.create(req.body);
+    const recordData = {
+      ...req.body,
+      recordedBy: req.employee?.name || 'Unknown'
+    };
+    const record = await Production.create(recordData);
     res.status(201).json(record);
   } catch (error) {
     res.status(400).json({ message: error.message });

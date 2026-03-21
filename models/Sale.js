@@ -25,7 +25,8 @@ const saleSchema = mongoose.Schema({
   deliveryMode: { type: String, default: 'Door Delivery' },
   deliveredBy: { type: String },
   saleItems: [saleItemSchema],
-  status: { type: String, default: 'success' }
+  status: { type: String, default: 'success' },
+  recordedBy: { type: String }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Sale', saleSchema);

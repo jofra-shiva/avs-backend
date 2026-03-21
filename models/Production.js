@@ -9,6 +9,7 @@ const productionSchema = mongoose.Schema({
   grade: { type: String, default: 'A' },
   operator: { type: String },
   status: { type: String, default: 'completed' },
+  recordedBy: { type: String },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Production', productionSchema);

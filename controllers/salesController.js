@@ -17,7 +17,11 @@ const getSales = async (req, res) => {
 // @access  Private
 const logSale = async (req, res) => {
   try {
-    const sale = await Sale.create(req.body);
+    const saleData = {
+      ...req.body,
+      recordedBy: req.employee?.name || 'Unknown'
+    };
+    const sale = await Sale.create(saleData);
     res.status(201).json(sale);
   } catch (error) {
     res.status(400).json({ message: error.message });
