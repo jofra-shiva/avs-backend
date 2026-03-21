@@ -116,7 +116,8 @@ const loginUser = async (req, res) => {
       const token = generateToken({
         id: employee._id,
         role: employee.role,
-        modules: employee.modules
+        modules: employee.modules,
+        isFirstLogin: employee.isFirstLogin
       });
 
       res.json({
@@ -125,6 +126,7 @@ const loginUser = async (req, res) => {
         username: employee.username,
         role: employee.role,
         modules: employee.modules,
+        isFirstLogin: employee.isFirstLogin,
         token: token,
       });
     } else {
@@ -137,7 +139,30 @@ const loginUser = async (req, res) => {
   }
 };
 
+// @desc    Change password after first login
+// @route   PUT /api/auth/change-password
+// @access  Private
+const changePassword = async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    const employee = await Employee.findById(req.employee._id);
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    employee.password = newPassword;
+    employee.isFirstLogin = false;
+    await employee.save();
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
+  changePassword,
 };

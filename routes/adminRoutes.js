@@ -37,6 +37,36 @@ router.get('/employees', verifyToken, adminOnly, async (req, res) => {
   }
 });
 
+// @route   PUT /api/admin/employees/:id/credentials
+// @desc    Update employee credentials (username/password)
+// @access  Admin
+router.put('/employees/:id/credentials', verifyToken, adminOnly, async (req, res) => {
+  const { username, password } = req.body;
+
+  try {
+    const employee = await Employee.findById(req.params.id);
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    if (username) employee.username = username;
+    if (password) {
+      employee.password = password;
+      employee.isFirstLogin = true; // Force change on next login
+    }
+    
+    await employee.save();
+
+    res.json({ 
+      message: 'Credentials updated successfully',
+      username: employee.username,
+      isFirstLogin: employee.isFirstLogin
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // @route   PUT /api/admin/employees/:id/modules
 // @desc    Update employee modules
 // @access  Admin
