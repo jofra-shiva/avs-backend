@@ -24,29 +24,40 @@ const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
-// Body parser
-app.use(express.json());
-
-// Enable CORS
+// Enable CORS - Optimized for Vercel & Development
 const allowedOrigins = [
   'https://avseco-f.vercel.app',
   'http://localhost:3000',
-  'http://localhost:3001'
+  'http://localhost:3001',
+  'http://localhost:5173'
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
+    
+    const normalizedOrigin = origin.replace(/\/$/, "");
+    
+    // Allow if in whitelist OR if it's a Vercel deployment
+    const isAllowed = allowedOrigins.includes(normalizedOrigin) || 
+                      normalizedOrigin.endsWith('.vercel.app');
+                      
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.log('CORS block for origin:', origin);
+      callback(null, false); // No error, just don't allow
     }
-    return callback(null, true);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+  optionsSuccessStatus: 200, // For legacy browser support
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
+
+// Body parser
+app.use(express.json());
 
 let indexCleaned = false;
 app.use(async (req, res, next) => {
