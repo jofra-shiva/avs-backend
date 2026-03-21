@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const {
+  getSales,
+  logSale,
+  updateSale,
+  deleteSale,
+} = require('../controllers/salesController');
 const { verifyToken, checkAccess } = require('../middleware/authMiddleware');
-
-// Before: router.get('/', getSales);
-// After: router.get('/', verifyToken, checkAccess('sales'), getSales);
 
 router.get('/', verifyToken, checkAccess('sales'), getSales);
 router.post('/', verifyToken, checkAccess('sales'), logSale);
