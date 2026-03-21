@@ -24,35 +24,45 @@ const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
-// 1. ABSOLUTE TOP: Manual CORS Fallback for Vercel/Serverless
+// Enable CORS - Using environment variable from Vercel where possible
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  // Allow all .vercel.app origins or the main ones
-  if (origin && (origin.endsWith('.vercel.app') || origin.includes('localhost'))) {
-    res.header('Access-Control-Allow-Origin', origin);
+  const frontendUrl = process.env.FRONTEND_URL?.replace(/\/$/, "");
+  
+  // Whitelist based on environment variable and standard defaults
+  const allowedOrigins = [
+    'https://avseco-f.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    frontendUrl
+  ].filter(Boolean);
+
+  if (!origin) {
+    // Allow non-browser requests
+    next();
+  } else if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+    next();
   } else {
-    res.header('Access-Control-Allow-Origin', '*'); // Default fallback
+    // Even if origin is not explicitly allowed, we should still handle preflights gracefully
+    // to avoid hard crashes, but strictly we don't send the allow-origin header.
+    if (req.method === 'OPTIONS') {
+      res.setHeader('Access-Control-Allow-Origin', origin); // Temporary allow for debug
+      res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+      return res.status(200).end();
+    }
+    next();
   }
-  
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  // Handle preflight immediately before anything else
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  next();
 });
 
-// 2. Official CORS Middleware (Lenient)
-app.use(cors({
-  origin: true, // Echoes the request's origin
-  credentials: true,
-  optionsSuccessStatus: 200
-}));
-
-// 3. Body parser
+// Body parser
 app.use(express.json());
 
 let indexCleaned = false;
