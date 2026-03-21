@@ -59,18 +59,17 @@ const loginUser = async (req, res) => {
     username = username.trim();
     console.log(`Login attempt for: ${username}`);
 
+    const searchRegex = new RegExp(`^${username}$`, 'i');
     let employee = await Employee.findOne({ 
       $or: [
-        { username: username }, 
-        { email: username }
+        { username: searchRegex }, 
+        { email: searchRegex }
       ]
     });
 
     // --- SELF-HEAL MIGRATION LOGIC ---
-    // If employee exists but has no password, OR if no employee found yet
-    // check the legacy 'User' collection.
     if (!employee || !employee.password) {
-      const legacyUser = await User.findOne({ email: username });
+      const legacyUser = await User.findOne({ email: searchRegex });
       
       if (legacyUser) {
         console.log(`Self-Heal: Found legacy user ${username} with role ${legacyUser.role}. Migrating...`);

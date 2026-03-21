@@ -38,7 +38,7 @@ const checkAccess = (moduleName) => {
       return res.status(401).json({ message: 'Not authorized, no employee object found' });
     }
 
-    const isAdmin = req.employee.role === 'admin';
+    const isAdmin = req.employee.role && req.employee.role.toLowerCase() === 'admin';
     const hasModuleAccess = req.employee.modules && req.employee.modules.includes(moduleName);
 
     if (isAdmin || hasModuleAccess) {
@@ -55,7 +55,7 @@ const checkAccess = (moduleName) => {
 
 // C) adminOnly: Allow only if role === admin
 const adminOnly = (req, res, next) => {
-  if (req.employee && req.employee.role === 'admin') {
+  if (req.employee && req.employee.role && req.employee.role.toLowerCase() === 'admin') {
     next();
   } else {
     res.status(403).json({ message: 'Access Denied: Admin only' });
