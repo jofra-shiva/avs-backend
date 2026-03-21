@@ -12,19 +12,24 @@ const getProductionTargets = async (req, res) => {
   }
 };
 
-// @desc    Create or update a production target
+// @desc    Create or update a production target (Consolidate by Size and Date)
 // @route   POST /api/production-targets
 // @access  Private
 const createOrUpdateTarget = async (req, res) => {
-  const { productSize, operator, date } = req.body;
+  const { productSize, date, targetQty } = req.body;
   try {
-    // Check if target already exists for this size/operator combo
-    let target = await ProductionTarget.findOne({ productSize, operator });
+    const qty = parseInt(targetQty || 0);
+    
+    // Check if target already exists for this size on this specific date
+    // We ignore operator here to ensure size-wise consolidation as requested
+    let target = await ProductionTarget.findOne({ productSize, date });
 
     if (target) {
-      // Add to existing target
-      target.targetQty += parseInt(req.body.targetQty);
-      target.remainingQty += parseInt(req.body.targetQty);
+      // Consolidate: Add to existing target
+      target.targetQty += qty;
+      target.remainingQty += qty;
+      
+      // Update status based on new target
       target.status = target.producedQty >= target.targetQty ? 'completed' :
                       target.producedQty > 0 ? 'in-progress' : 'pending';
       

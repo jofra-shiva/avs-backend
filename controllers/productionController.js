@@ -12,12 +12,36 @@ const getProduction = async (req, res) => {
   }
 };
 
+// Import ProductionTarget model
+const ProductionTarget = require('../models/ProductionTarget');
+
+// Helper to update target progress
+const updateTargetProgress = async (date, productSize, qtyChange) => {
+  try {
+    // Find matching target
+    const target = await ProductionTarget.findOne({ date, productSize });
+    if (target) {
+      target.producedQty = (target.producedQty || 0) + Number(qtyChange);
+      target.remainingQty = Math.max(target.targetQty - target.producedQty, 0);
+      target.status = target.producedQty >= target.targetQty ? 'completed' :
+                      target.producedQty > 0 ? 'in-progress' : 'pending';
+      await target.save();
+    }
+  } catch (error) {
+    console.error("Error updating target progress:", error);
+  }
+};
+
 // @desc    Create or Update a production record (combine same sizes for today)
 // @route   POST /api/production
 // @access  Private
 const createProduction = async (req, res) => {
   try {
     const { date, operator, product, size, grade, quantity, time } = req.body;
+    const qty = parseInt(quantity || 0);
+
+    // Update the Production Plan Target
+    await updateTargetProgress(date, size, qty);
     
     // Check if exactly matching record exists
     const existing = await Production.findOne({
@@ -25,8 +49,8 @@ const createProduction = async (req, res) => {
     });
 
     if (existing) {
-      existing.quantity += parseInt(quantity || 0);
-      existing.time = time; // Update to the newest action time
+      existing.quantity += qty;
+      existing.time = time;
       await existing.save();
       return res.status(200).json(existing);
     }
@@ -47,6 +71,22 @@ const updateProduction = async (req, res) => {
     if (!record) {
       return res.status(404).json({ message: 'Record not found' });
     }
+
+    // Handle target update for quantity change
+    if (req.body.quantity !== undefined || req.body.size !== undefined || req.body.date !== undefined) {
+      const oldQty = record.quantity || 0;
+      const newQty = req.body.quantity !== undefined ? parseInt(req.body.quantity) : oldQty;
+      
+      if (record.date === (req.body.date || record.date) && record.size === (req.body.size || record.size)) {
+        // Simple quantity change on same date/size
+        await updateTargetProgress(record.date, record.size, newQty - oldQty);
+      } else {
+        // Date or Size changed: decrement old, increment new
+        await updateTargetProgress(record.date, record.size, -oldQty);
+        await updateTargetProgress(req.body.date || record.date, req.body.size || record.size, newQty);
+      }
+    }
+
     const updatedRecord = await Production.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -67,6 +107,9 @@ const deleteProduction = async (req, res) => {
     const record = await Production.findById(req.params.id);
 
     if (record) {
+      // Decrement target progress
+      await updateTargetProgress(record.date, record.size, -(record.quantity || 0));
+      
       await Production.deleteOne({ _id: record._id });
       res.json({ message: 'Production record removed' });
     } else {
