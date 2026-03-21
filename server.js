@@ -24,39 +24,35 @@ const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
-// Enable CORS - Optimized for Vercel & Development
-const allowedOrigins = [
-  'https://avseco-f.vercel.app',
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:5173'
-];
+// 1. ABSOLUTE TOP: Manual CORS Fallback for Vercel/Serverless
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  // Allow all .vercel.app origins or the main ones
+  if (origin && (origin.endsWith('.vercel.app') || origin.includes('localhost'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    res.header('Access-Control-Allow-Origin', '*'); // Default fallback
+  }
+  
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight immediately before anything else
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
 
+// 2. Official CORS Middleware (Lenient)
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
-    if (!origin) return callback(null, true);
-    
-    const normalizedOrigin = origin.replace(/\/$/, "");
-    
-    // Allow if in whitelist OR if it's a Vercel deployment
-    const isAllowed = allowedOrigins.includes(normalizedOrigin) || 
-                      normalizedOrigin.endsWith('.vercel.app');
-                      
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.log('CORS block for origin:', origin);
-      callback(null, false); // No error, just don't allow
-    }
-  },
+  origin: true, // Echoes the request's origin
   credentials: true,
-  optionsSuccessStatus: 200, // For legacy browser support
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+  optionsSuccessStatus: 200
 }));
 
-// Body parser
+// 3. Body parser
 app.use(express.json());
 
 let indexCleaned = false;
