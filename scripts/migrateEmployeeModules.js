@@ -2,17 +2,18 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const path = require('path');
 const Employee = require('../models/Employee');
+const User = require('../models/User'); // Import User model for password migration
 
 // Load env vars
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const migrate = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27010/avseco');
+    const conn = await mongoose.connect(process.env.MONGO_URI);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
 
     const employees = await Employee.find({});
-    console.log(`Found ${employees.length} employees to migrate.`);
+    console.log(`Found ${employees.length} employees to check.`);
 
     const VALID_MODULES = [
       "dashboard", "stock", "products", "production", 
@@ -22,28 +23,62 @@ const migrate = async () => {
     for (let employee of employees) {
       let updated = false;
 
-      // Ensure modules array exists
-      if (!employee.modules) {
+      // 1. Ensure modules array exists
+      if (!employee.modules || !Array.isArray(employee.modules)) {
         employee.modules = [];
         updated = true;
       }
 
-      // If admin, assign all modules
+      // 2. Look for matching user in the old User collection to sync password/role
+      if (employee.email) {
+        const matchingUser = await User.findOne({ email: employee.email });
+        if (matchingUser) {
+          // Sync password if employee doesn't have one
+          if (!employee.password) {
+            employee.password = matchingUser.password; // Copy already hashed password
+            updated = true;
+          }
+          // Sync role if user was admin
+          if (matchingUser.role === 'admin' && employee.role !== 'admin') {
+            employee.role = 'admin';
+            updated = true;
+          }
+        }
+      }
+
+      // 3. If admin, assign all modules
       if (employee.role === 'admin' && employee.modules.length !== VALID_MODULES.length) {
         employee.modules = VALID_MODULES;
         updated = true;
       }
 
-      // Ensure username exists (use empId as fallback if missing)
+      // 4. Ensure username exists (fallback to email prefix or name prefix if missing)
       if (!employee.username) {
-        employee.username = employee.empId || `user_${employee._id.toString().slice(-4)}`;
+        if (employee.email) {
+          employee.username = employee.email; // Use email as default username for compatibility
+        } else {
+          employee.username = employee.empId || `user_${employee._id.toString().slice(-4)}`;
+        }
         updated = true;
       }
 
       if (updated) {
-        // We use save() to trigger the pre-save hook for password/empId if needed, 
-        // though here we only care about the new fields.
-        await employee.save();
+        // We use save() but note that pre-save hook for password hashing should ONLY 
+        // hash if it's new/modified plaintext. Since we copy hashed password, 
+        // we should be careful. 
+        // In Employee.js pre-save: if (this.isModified('password') && this.password)
+        // If we assign a HASHED password, isModified('password') is true.
+        // It will RE-HASH! This is bad.
+        
+        // FIX: Update directly if password was copied to avoid re-hashing
+        await Employee.updateOne({ _id: employee._id }, { 
+            role: employee.role,
+            modules: employee.modules,
+            username: employee.username,
+            password: employee.password,
+            empId: employee.empId
+        });
+        
         console.log(`Migrated employee: ${employee.name} (${employee.username})`);
       }
     }

@@ -59,7 +59,13 @@ const loginUser = async (req, res) => {
     username = username.trim();
     console.log(`Login attempt for: ${username}`);
 
-    const employee = await Employee.findOne({ username });
+    // Support login via either username OR email
+    const employee = await Employee.findOne({ 
+      $or: [
+        { username: username }, 
+        { email: username }
+      ]
+    });
 
     if (!employee) {
       console.log(`Login failed: Employee ${username} not found in database.`);
