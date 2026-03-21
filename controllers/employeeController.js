@@ -33,7 +33,21 @@ const getEmployeeById = async (req, res) => {
 // @access  Private
 const createEmployee = async (req, res) => {
   try {
-    const { name, department, email, phone, joinDate, dob, aadhar, pan, address, salary } = req.body;
+    console.log("Creating employee with payload:", JSON.stringify(req.body, null, 2));
+    const { name, department, email, phone, joinDate, dob, aadhar, pan, address, salary, avatar } = req.body;
+
+    // Check for existing duplicates first to give clear messages
+    const existingPhone = await Employee.findOne({ phone });
+    if (existingPhone) {
+      console.warn("Duplicate phone detected:", phone);
+      return res.status(400).json({ message: '⚠️ This Phone Number is already registered to another employee.' });
+    }
+
+    const existingAadhar = await Employee.findOne({ aadhar });
+    if (existingAadhar) {
+      console.warn("Duplicate Aadhar detected:", aadhar);
+      return res.status(400).json({ message: '⚠️ This Aadhar Number is already registered to another employee.' });
+    }
 
     const employee = await Employee.create({
       name,
@@ -46,10 +60,17 @@ const createEmployee = async (req, res) => {
       pan,
       address,
       salary,
+      avatar,
     });
 
+    console.log("Employee created successfully:", employee._id);
     res.status(201).json(employee);
   } catch (error) {
+    console.error("Employee Creation Error:", error);
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ message: `⚠️ The ${field} provided already exists in the system.` });
+    }
     res.status(400).json({ message: error.message });
   }
 };
@@ -62,13 +83,30 @@ const updateEmployee = async (req, res) => {
     const employee = await Employee.findById(req.params.id);
 
     if (employee) {
-      Object.assign(employee, req.body);
+      const { name, department, email, phone, joinDate, dob, aadhar, pan, address, salary, avatar } = req.body;
+      
+      employee.name = name || employee.name;
+      employee.department = department || employee.department;
+      employee.email = email || employee.email;
+      employee.phone = phone || employee.phone;
+      employee.joinDate = joinDate || employee.joinDate;
+      employee.dob = dob || employee.dob;
+      employee.aadhar = aadhar || employee.aadhar;
+      employee.pan = pan || employee.pan;
+      employee.address = address || employee.address;
+      employee.salary = salary !== undefined ? salary : employee.salary;
+      employee.avatar = avatar || employee.avatar;
+
       const updatedEmployee = await employee.save();
       res.json(updatedEmployee);
     } else {
       res.status(404).json({ message: 'Employee not found' });
     }
   } catch (error) {
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ message: `⚠️ The ${field} provided already exists in the system.` });
+    }
     res.status(400).json({ message: error.message });
   }
 };
