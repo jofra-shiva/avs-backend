@@ -59,18 +59,52 @@ const loginUser = async (req, res) => {
     username = username.trim();
     console.log(`Login attempt for: ${username}`);
 
-    // Support login via either username OR email
-    const employee = await Employee.findOne({ 
+    let employee = await Employee.findOne({ 
       $or: [
         { username: username }, 
         { email: username }
       ]
     });
 
+    // --- SELF-HEAL MIGRATION LOGIC ---
+    // If employee exists but has no password, OR if no employee found yet
+    // check the legacy 'User' collection.
+    if (!employee || !employee.password) {
+      const legacyUser = await User.findOne({ email: username });
+      
+      if (legacyUser) {
+        console.log(`Self-Heal: Found legacy user ${username}. Migrating to Employee...`);
+        
+        if (!employee) {
+          // Create employee if missing but exists as User
+          employee = await Employee.create({
+            name: legacyUser.name,
+            email: legacyUser.email,
+            username: legacyUser.email,
+            password: legacyUser.password, // Copy hash
+            role: legacyUser.role === 'admin' ? 'admin' : 'employee',
+            department: 'Management',
+            modules: legacyUser.role === 'admin' ? 
+              ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports"] : []
+          });
+        } else {
+          // Just sync password and role to existing employee
+          employee.password = legacyUser.password;
+          if (legacyUser.role === 'admin') {
+            employee.role = 'admin';
+            employee.modules = ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports"];
+          }
+          await employee.save();
+        }
+      }
+    }
+
     if (!employee) {
-      console.log(`Login failed: Employee ${username} not found in database.`);
+      console.log(`Login failed: No account found for "${username}"`);
       return res.status(401).json({ message: 'Invalid username or password' });
     }
+
+    console.log(`Employee found: ${employee.name} (Role: ${employee.role}, HasPassword: ${!!employee.password})`);
 
     const isMatch = await employee.matchPassword(password);
     console.log(`Password match result for ${username}: ${isMatch}`);

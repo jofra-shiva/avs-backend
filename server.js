@@ -66,6 +66,8 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 let indexCleaned = false;
+let adminBootstrapped = false;
+
 app.use(async (req, res, next) => {
   try {
     const conn = await connectDB();
@@ -73,6 +75,44 @@ app.use(async (req, res, next) => {
       return res.status(500).json({ 
         message: 'Database Connection Error. Please verify MONGO_URI and IP Whitelisting.' 
       });
+    }
+
+    // --- BOOTSTRAP ADMIN (ONE-TIME SETUP) ---
+    if (!adminBootstrapped) {
+      try {
+        const Employee = require('./models/Employee');
+        const adminEmail = 'admin@avseco.in';
+        const adminPassword = 'ceo@avseco'; // Per user request
+        
+        let admin = await Employee.findOne({ email: adminEmail });
+        
+        const adminData = {
+          name: 'Administrator',
+          email: adminEmail,
+          username: adminEmail,
+          password: adminPassword,
+          role: 'admin',
+          department: 'Management',
+          modules: ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports"]
+        };
+
+        if (admin) {
+          // Update existing admin to match requested credentials
+          admin.password = adminPassword;
+          admin.role = 'admin';
+          admin.modules = adminData.modules;
+          admin.username = adminEmail;
+          await admin.save();
+          console.log(`✅ Bootstrap: Updated admin account: ${adminEmail}`);
+        } else {
+          // Create from scratch
+          await Employee.create(adminData);
+          console.log(`✅ Bootstrap: Created new admin account: ${adminEmail}`);
+        }
+        adminBootstrapped = true;
+      } catch (err) {
+        console.log("Bootstrap Note:", err.message);
+      }
     }
 
     // Vercel-compatible: Cleanup broken database index on the FIRST request after server start
