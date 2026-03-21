@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Employee = require('../models/Employee');
 const generateToken = require('../utils/generateToken');
 
 // @desc    Register a new user
@@ -49,37 +50,46 @@ const registerUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
   try {
-    let { email, password } = req.body;
+    let { username, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Please provide email and password' });
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Please provide username and password' });
     }
 
-    email = email.trim().toLowerCase();
-    console.log(`Login attempt for: ${email}`);
+    username = username.trim();
+    console.log(`Login attempt for: ${username}`);
 
-    const user = await User.findOne({ email });
+    const employee = await Employee.findOne({ username });
 
-    if (!user) {
-      console.log(`Login failed: User ${email} not found in database.`);
-      return res.status(401).json({ message: 'Invalid email or password' });
+    if (!employee) {
+      console.log(`Login failed: Employee ${username} not found in database.`);
+      return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    const isMatch = await user.matchPassword(password);
-    console.log(`Password match result for ${email}: ${isMatch}`);
+    const isMatch = await employee.matchPassword(password);
+    console.log(`Password match result for ${username}: ${isMatch}`);
 
     if (isMatch) {
-      console.log(`✅ Login SUCCESS for ${email}`);
+      console.log(`✅ Login SUCCESS for ${username}`);
+      
+      // Generate JWT with employeeId, role, modules
+      const token = generateToken({
+        id: employee._id,
+        role: employee.role,
+        modules: employee.modules
+      });
+
       res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        token: generateToken(user._id),
+        _id: employee._id,
+        name: employee.name,
+        username: employee.username,
+        role: employee.role,
+        modules: employee.modules,
+        token: token,
       });
     } else {
-      console.log(`❌ Login FAILED: Password mismatch for ${email}`);
-      res.status(401).json({ message: 'Invalid email or password' });
+      console.log(`❌ Login FAILED: Password mismatch for ${username}`);
+      res.status(401).json({ message: 'Invalid username or password' });
     }
   } catch (error) {
     console.error('Login Technical Error:', error);

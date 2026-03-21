@@ -4,9 +4,9 @@ const {
   getAttendanceByDate,
   upsertAttendance,
 } = require('../controllers/attendanceController');
-const { protect } = require('../middleware/auth');
+const { verifyToken, checkAccess } = require('../middleware/authMiddleware');
 
-router.get('/:date', protect, getAttendanceByDate);
-router.post('/bulk', protect, upsertAttendance);
+router.get('/:date', verifyToken, checkAccess('attendance'), getAttendanceByDate);
+router.post('/bulk', verifyToken, checkAccess('attendance'), upsertAttendance);
 
 module.exports = router;

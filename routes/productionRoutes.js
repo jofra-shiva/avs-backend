@@ -7,15 +7,18 @@ const {
   deleteProduction,
   clearAllProduction,
 } = require('../controllers/productionController');
-const { protect } = require('../middleware/auth');
+const { verifyToken, checkAccess } = require('../middleware/authMiddleware');
+
+// Before: router.route('/').get(protect, getProduction)...
+// After: router.route('/').get(verifyToken, checkAccess('production'), getProduction)...
 
 router.route('/')
-  .get(protect, getProduction)
-  .post(protect, createProduction)
-  .delete(protect, clearAllProduction);
+  .get(verifyToken, checkAccess('production'), getProduction)
+  .post(verifyToken, checkAccess('production'), createProduction)
+  .delete(verifyToken, checkAccess('production'), clearAllProduction);
 
 router.route('/:id')
-  .put(protect, updateProduction)
-  .delete(protect, deleteProduction);
+  .put(verifyToken, checkAccess('production'), updateProduction)
+  .delete(verifyToken, checkAccess('production'), deleteProduction);
 
 module.exports = router;

@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { getSales, logSale, updateSale, deleteSale } = require('../controllers/salesController');
+const { verifyToken, checkAccess } = require('../middleware/authMiddleware');
 
-router.get('/', getSales);
-router.post('/', logSale);
-router.put('/:id', updateSale);
-router.delete('/:id', deleteSale);
+// Before: router.get('/', getSales);
+// After: router.get('/', verifyToken, checkAccess('sales'), getSales);
+
+router.get('/', verifyToken, checkAccess('sales'), getSales);
+router.post('/', verifyToken, checkAccess('sales'), logSale);
+router.put('/:id', verifyToken, checkAccess('sales'), updateSale);
+router.delete('/:id', verifyToken, checkAccess('sales'), deleteSale);
 
 module.exports = router;

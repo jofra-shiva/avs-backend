@@ -20,6 +20,7 @@ const productionRoutes = require('./routes/productionRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const productionTargetRoutes = require('./routes/productionTargetRoutes');
 const salesRoutes = require('./routes/salesRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
@@ -101,6 +102,7 @@ app.use('/api/production', productionRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/production-targets', productionTargetRoutes);
 app.use('/api/sales', salesRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Silent favicon handler to prevent 404 logs
 app.get('/favicon.ico', (req, res) => res.status(204).end());

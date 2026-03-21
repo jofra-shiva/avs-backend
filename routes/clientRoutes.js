@@ -6,14 +6,14 @@ const {
   updateClient,
   deleteClient,
 } = require('../controllers/clientController');
-const { protect } = require('../middleware/auth');
+const { verifyToken, checkAccess } = require('../middleware/authMiddleware');
 
 router.route('/')
-  .get(protect, getClients)
-  .post(protect, createClient);
+  .get(verifyToken, checkAccess('clients'), getClients)
+  .post(verifyToken, checkAccess('clients'), createClient);
 
 router.route('/:id')
-  .put(protect, updateClient)
-  .delete(protect, deleteClient);
+  .put(verifyToken, checkAccess('clients'), updateClient)
+  .delete(verifyToken, checkAccess('clients'), deleteClient);
 
 module.exports = router;

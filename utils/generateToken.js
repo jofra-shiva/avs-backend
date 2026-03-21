@@ -1,9 +1,15 @@
 const jwt = require('jsonwebtoken');
 
-const generateToken = (id) => {
+const generateToken = (payload) => {
   const secret = process.env.JWT_SECRET || 'default_secret_fallback_123';
-  return jwt.sign({ id: id.toString() }, secret, {
-    expiresIn: '30d',
+  
+  // If payload is just an ID string/objectID, wrap it in an object
+  const data = typeof payload === 'object' && !Array.isArray(payload) && payload !== null
+    ? payload 
+    : { id: payload.toString() };
+
+  return jwt.sign(data, secret, {
+    expiresIn: '8h',
   });
 };
 

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const employeeSchema = mongoose.Schema({
   name: { type: String, required: true },
@@ -13,10 +14,25 @@ const employeeSchema = mongoose.Schema({
   address: { type: String },
   salary: { type: Number },
   avatar: { type: String },
+  username: { type: String, unique: true, sparse: true },
+  password: { type: String },
+  role: { type: String, default: 'employee' },
+  modules: { type: [String], default: [] },
 }, { timestamps: true });
 
-// Auto-generate empId if not provided
-employeeSchema.pre('save', function(next) {
+// Match user entered password to hashed password in database
+employeeSchema.methods.matchPassword = async function (enteredPassword) {
+  if (!this.password) return false;
+  return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Encrypt password using bcrypt and auto-generate empId
+employeeSchema.pre('save', async function (next) {
+  if (this.isModified('password') && this.password) {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  }
+
   if (!this.empId) {
     this.empId = 'EMP-' + Math.floor(100000 + Math.random() * 900000);
   }

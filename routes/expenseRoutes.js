@@ -6,14 +6,17 @@ const {
   updateExpense,
   deleteExpense,
 } = require('../controllers/expenseController');
-const { protect } = require('../middleware/auth');
+const { verifyToken, checkAccess } = require('../middleware/authMiddleware');
+
+// Before: router.route('/').get(protect, getExpenses)...
+// After: router.route('/').get(verifyToken, checkAccess('stock'), getExpenses)...
 
 router.route('/')
-  .get(protect, getExpenses)
-  .post(protect, createExpense);
+  .get(verifyToken, checkAccess('stock'), getExpenses)
+  .post(verifyToken, checkAccess('stock'), createExpense);
 
 router.route('/:id')
-  .put(protect, updateExpense)
-  .delete(protect, deleteExpense);
+  .put(verifyToken, checkAccess('stock'), updateExpense)
+  .delete(verifyToken, checkAccess('stock'), deleteExpense);
 
 module.exports = router;
