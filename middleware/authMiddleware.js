@@ -10,24 +10,21 @@ const verifyToken = async (req, res, next) => {
     req.headers.authorization.startsWith('Bearer')
   ) {
     try {
-      // Get token from header
       token = req.headers.authorization.split(' ')[1];
-
-      // Verify token
       const secret = process.env.JWT_SECRET || 'default_secret_fallback_123';
       const decoded = jwt.verify(token, secret);
 
-      // Fetch employee from DB using employeeId (which is 'id' in the token payload)
-      // Do NOT trust token alone - fetch full employee object
+      // Fetch employee using employeeId (decoded.id)
       req.employee = await Employee.findById(decoded.id).select('-password');
 
       if (!req.employee) {
+        console.warn(`[AuthMiddleware] Employee NOT FOUND in DB for ID: ${decoded.id}`);
         return res.status(401).json({ message: 'Not authorized, employee not found' });
       }
 
       next();
     } catch (error) {
-      console.error('Token verification error:', error);
+      console.error('[AuthMiddleware] Token verification error:', error.message);
       res.status(401).json({ message: 'Not authorized, token failed' });
     }
   } else {
@@ -35,17 +32,23 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
-// B) checkAccess(moduleName): Allow if admin OR module assigned
 const checkAccess = (moduleName) => {
   return (req, res, next) => {
     if (!req.employee) {
-      return res.status(401).json({ message: 'Not authorized' });
+      return res.status(401).json({ message: 'Not authorized, no employee object found' });
     }
 
-    if (req.employee.role === 'admin' || req.employee.modules.includes(moduleName)) {
+    const isAdmin = req.employee.role === 'admin';
+    const hasModuleAccess = req.employee.modules && req.employee.modules.includes(moduleName);
+
+    if (isAdmin || hasModuleAccess) {
       next();
     } else {
-      res.status(403).json({ message: 'Access Denied' });
+      console.warn(`[AccessDenied] Employee: ${req.employee.name}, Role: ${req.employee.role}, Module: ${moduleName}`);
+      res.status(403).json({ 
+        message: 'Access Denied', 
+        details: `Employee role '${req.employee.role}' does not have access to module '${moduleName}'` 
+      });
     }
   };
 };

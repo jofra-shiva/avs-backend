@@ -73,27 +73,24 @@ const loginUser = async (req, res) => {
       const legacyUser = await User.findOne({ email: username });
       
       if (legacyUser) {
-        console.log(`Self-Heal: Found legacy user ${username}. Migrating to Employee...`);
-        
+        console.log(`Self-Heal: Found legacy user ${username} with role ${legacyUser.role}. Migrating...`);
+        const isAdmin = legacyUser.role && legacyUser.role.toLowerCase() === 'admin';
+        const adminModules = ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports"];
+
         if (!employee) {
-          // Create employee if missing but exists as User
           employee = await Employee.create({
             name: legacyUser.name,
             email: legacyUser.email,
             username: legacyUser.email,
-            password: legacyUser.password, // Copy hash
-            role: legacyUser.role === 'admin' ? 'admin' : 'employee',
-            department: 'Management',
-            modules: legacyUser.role === 'admin' ? 
-              ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports"] : []
+            password: legacyUser.password,
+            role: isAdmin ? 'admin' : 'employee',
+            department: isAdmin ? 'Management' : 'Others',
+            modules: isAdmin ? adminModules : []
           });
         } else {
-          // Just sync password and role to existing employee
           employee.password = legacyUser.password;
-          if (legacyUser.role === 'admin') {
-            employee.role = 'admin';
-            employee.modules = ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports"];
-          }
+          employee.role = isAdmin ? 'admin' : 'employee';
+          if (isAdmin) employee.modules = adminModules;
           await employee.save();
         }
       }
