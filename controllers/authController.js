@@ -135,7 +135,32 @@ const loginUser = async (req, res) => {
   }
 };
 
-// @desc    Change password after first login
+const updateProfilePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const employee = await Employee.findById(req.employee._id);
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Verify old password
+    const isMatch = await employee.matchPassword(oldPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Incorrect current password' });
+    }
+
+    employee.password = newPassword;
+    employee.isFirstLogin = false;
+    await employee.save();
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Change password after first login (Forced)
 // @route   PUT /api/auth/change-password
 // @access  Private
 const changePassword = async (req, res) => {
@@ -173,5 +198,6 @@ module.exports = {
   registerUser,
   loginUser,
   changePassword,
+  updateProfilePassword,
   getMe
 };

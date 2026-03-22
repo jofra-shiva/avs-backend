@@ -8,7 +8,8 @@ const attendanceSchema = mongoose.Schema({
   halfDayTime: {
     from: { type: String },
     to: { type: String }
-  }
+  },
+  recordedBy: { type: String }
 }, { timestamps: true });
 
 // Ensure one record per employee per day

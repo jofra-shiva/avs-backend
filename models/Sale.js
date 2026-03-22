@@ -24,6 +24,7 @@ const saleSchema = mongoose.Schema({
   amountPaid: { type: Number, default: 0 },
   deliveryMode: { type: String, default: 'Door Delivery' },
   deliveredBy: { type: String },
+  soldBy: { type: String },
   saleItems: [saleItemSchema],
   status: { type: String, default: 'success' },
   recordedBy: { type: String }

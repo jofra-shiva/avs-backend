@@ -39,9 +39,26 @@ const checkAccess = (moduleName) => {
     }
 
     const isAdmin = req.employee.role && req.employee.role.toLowerCase() === 'admin';
-    const hasModuleAccess = req.employee.modules && req.employee.modules.includes(moduleName);
+    const modules = req.employee.modules || [];
+    
+    // 1. Primary Direct Access
+    let hasAccess = modules.includes(moduleName);
 
-    if (isAdmin || hasModuleAccess) {
+    // 2. Operational Dependencies (Master Data Access)
+    // If requesting products, allow if user has production or sales access
+    if (moduleName === 'products' && (modules.includes('production') || modules.includes('sales'))) {
+      hasAccess = true;
+    }
+    // If requesting employees, allow if user has production or attendance access
+    if (moduleName === 'employees' && (modules.includes('production') || modules.includes('attendance'))) {
+      hasAccess = true;
+    }
+    // If requesting clients, allow if user has sales access
+    if (moduleName === 'clients' && modules.includes('sales')) {
+      hasAccess = true;
+    }
+
+    if (isAdmin || hasAccess) {
       next();
     } else {
       console.warn(`[AccessDenied] Employee: ${req.employee.name}, Role: ${req.employee.role}, Module: ${moduleName}`);
