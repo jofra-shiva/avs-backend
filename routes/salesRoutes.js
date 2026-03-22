@@ -5,6 +5,7 @@ const {
   logSale,
   updateSale,
   deleteSale,
+  clearAllSales,
 } = require('../controllers/salesController');
 const { verifyToken, checkAccess } = require('../middleware/authMiddleware');
 
