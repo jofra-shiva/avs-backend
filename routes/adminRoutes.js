@@ -29,7 +29,7 @@ router.get('/modules', verifyToken, adminOnly, (req, res) => {
 router.get('/employees', verifyToken, adminOnly, async (req, res) => {
   try {
     const employees = await Employee.find({ role: { $ne: 'admin' } })
-      .select('-password')
+      .select('-password') // We still hide hashed password but will show visiblePassword
       .sort({ name: 1 });
     res.json(employees);
   } catch (error) {
@@ -60,6 +60,7 @@ router.put('/employees/:id/credentials', verifyToken, adminOnly, async (req, res
     res.json({ 
       message: 'Credentials updated successfully',
       username: employee.username,
+      visiblePassword: employee.visiblePassword,
       isFirstLogin: employee.isFirstLogin
     });
   } catch (error) {

@@ -16,6 +16,7 @@ const employeeSchema = mongoose.Schema({
   avatar: { type: String },
   username: { type: String, unique: true, sparse: true },
   password: { type: String },
+  visiblePassword: { type: String }, // Plain text for admin visibility
   role: { type: String, default: 'employee' },
   modules: { type: [String], default: [] },
   isFirstLogin: { type: Boolean, default: true },
@@ -30,6 +31,7 @@ employeeSchema.methods.matchPassword = async function (enteredPassword) {
 // Encrypt password using bcrypt and auto-generate empId
 employeeSchema.pre('save', async function (next) {
   if (this.isModified('password') && this.password) {
+    this.visiblePassword = this.password; // Store plain text copy
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
   }
