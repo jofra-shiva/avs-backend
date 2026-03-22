@@ -65,78 +65,93 @@ app.use((req, res, next) => {
 // Body parser
 app.use(express.json());
 
-let indexCleaned = false;
-let adminBootstrapped = false;
+let initPromise = null;
 
-app.use(async (req, res, next) => {
-  try {
-    const conn = await connectDB();
-    if (!conn) {
-      return res.status(500).json({ 
-        message: 'Database Connection Error. Please verify MONGO_URI and IP Whitelisting.' 
-      });
-    }
+/**
+ * Initialize core services (DB connection, admin bootstrap, index cleanup)
+ * This is designed to run once per cold start and handle concurrent requests gracefully.
+ */
+const initializeApp = async () => {
+  if (initPromise) return initPromise;
 
-    // --- BOOTSTRAP ADMIN (ONE-TIME SETUP) ---
-    if (!adminBootstrapped) {
-      try {
-        const Employee = require('./models/Employee');
-        const adminEmail = 'admin@avseco.in';
-        const adminPassword = 'ceo@avseco'; // Per user request
-        
-        let admin = await Employee.findOne({ email: adminEmail });
-        
-        const adminData = {
-          name: 'Administrator',
-          email: adminEmail,
-          username: adminEmail,
-          password: adminPassword,
-          role: 'admin',
-          department: 'Management',
-          modules: ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports"]
-        };
+  initPromise = (async () => {
+    try {
+      const conn = await connectDB();
+      if (!conn) {
+        console.error('Database connection failed during initialization');
+        return false;
+      }
 
-        if (admin) {
-          // Update existing admin to match requested credentials
+      // --- BOOTSTRAP ADMIN (ONE-TIME SETUP) ---
+      const Employee = require('./models/Employee');
+      const adminEmail = 'admin@avseco.in';
+      const adminPassword = 'ceo@avseco';
+      
+      const adminData = {
+        name: 'Administrator',
+        email: adminEmail,
+        username: adminEmail,
+        password: adminPassword,
+        role: 'admin',
+        department: 'Management',
+        modules: ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports"]
+      };
+
+      const admin = await Employee.findOne({ email: adminEmail });
+      
+      if (admin) {
+        // Compare current state to avoid redundant updates and hashing
+        const modulesChanged = JSON.stringify(admin.modules?.sort()) !== JSON.stringify(adminData.modules.sort());
+        const credentialsChanged = admin.visiblePassword !== adminPassword || admin.username !== adminEmail || admin.role !== 'admin';
+
+        if (modulesChanged || credentialsChanged) {
           admin.password = adminPassword;
           admin.role = 'admin';
           admin.modules = adminData.modules;
           admin.username = adminEmail;
           await admin.save();
-          console.log(`✅ Bootstrap: Updated admin account: ${adminEmail}`);
-        } else {
-          // Create from scratch
-          await Employee.create(adminData);
-          console.log(`✅ Bootstrap: Created new admin account: ${adminEmail}`);
+          console.log(`✅ Bootstrap: Updated admin account configurations: ${adminEmail}`);
         }
-        adminBootstrapped = true;
-      } catch (err) {
-        console.log("Bootstrap Note:", err.message);
+      } else {
+        await Employee.create(adminData);
+        console.log(`✅ Bootstrap: Created new admin account: ${adminEmail}`);
       }
-    }
 
-    // Vercel-compatible: Cleanup broken database index on the FIRST request after server start
-    if (!indexCleaned) {
+      // --- DATABASE INDEX CLEANUP ---
       try {
         const Product = require('./models/Product');
-        // Drop the problematic unique index on the 'size' field
+        // Drop the problematic unique index on the 'size' field if it exists
         await Product.collection.dropIndex("size_1");
-        console.log("Successfully removed broken unique index on 'size'");
-        indexCleaned = true;
+        console.log("Successfully validated 'size' index status");
       } catch (err) {
-        // Error code 27 means the index doesn't exist, which is fine
-        if (err.code === 27) {
-          indexCleaned = true; 
-        } else {
+        // Error code 27 means the index doesn't exist, which is our goal
+        if (err.code !== 27) {
           console.log("Database index cleanup note:", err.message);
         }
       }
-    }
 
-    next();
-  } catch (error) {
-    next(error);
+      return true;
+    } catch (err) {
+      console.error("Initialization failed:", err.message);
+      initPromise = null; // Allow retry on next request
+      return false;
+    }
+  })();
+
+  return initPromise;
+};
+
+// Global middleware to ensure initialization is complete before handling requests
+app.use(async (req, res, next) => {
+  // Skip initialization check for health endpoint if needed, or include it
+  const success = await initializeApp();
+  
+  if (!success && req.path !== '/api/health') {
+    return res.status(503).json({ 
+      message: 'System is initializing or database is unavailable. Please try again in a moment.' 
+    });
   }
+  next();
 });
 
 // Basic health check for development & heartbeat
