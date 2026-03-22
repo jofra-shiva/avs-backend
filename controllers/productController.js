@@ -68,9 +68,22 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+// @desc    Reset all product initial stocks to 0
+// @route   POST /api/products/reset-stocks
+// @access  Private
+const resetAllStocks = async (req, res) => {
+  try {
+    await Product.updateMany({}, { $set: { stock: 0 } });
+    res.json({ message: 'All product stocks reset to 0' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getProducts,
   createProduct,
   updateProduct,
   deleteProduct,
+  resetAllStocks,
 };

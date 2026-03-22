@@ -61,9 +61,22 @@ const deleteSale = async (req, res) => {
   }
 };
 
+// @desc    Clear all sales records
+// @route   DELETE /api/sales
+// @access  Private
+const clearAllSales = async (req, res) => {
+  try {
+    await Sale.deleteMany({});
+    res.json({ message: 'All sales records cleared' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getSales,
   logSale,
   updateSale,
   deleteSale,
+  clearAllSales,
 };

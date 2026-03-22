@@ -12,5 +12,6 @@ router.get('/', verifyToken, checkAccess('sales'), getSales);
 router.post('/', verifyToken, checkAccess('sales'), logSale);
 router.put('/:id', verifyToken, checkAccess('sales'), updateSale);
 router.delete('/:id', verifyToken, checkAccess('sales'), deleteSale);
+router.delete('/', verifyToken, checkAccess('sales'), clearAllSales);
 
 module.exports = router;

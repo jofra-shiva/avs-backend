@@ -5,6 +5,7 @@ const {
   createProduct,
   updateProduct,
   deleteProduct,
+  resetAllStocks,
 } = require('../controllers/productController');
 const { verifyToken, checkAccess } = require('../middleware/authMiddleware');
 
@@ -14,6 +15,8 @@ const { verifyToken, checkAccess } = require('../middleware/authMiddleware');
 router.route('/')
   .get(verifyToken, checkAccess('products'), getProducts)
   .post(verifyToken, checkAccess('products'), createProduct);
+
+router.post('/reset-stocks', verifyToken, checkAccess('stock'), resetAllStocks);
 
 router.route('/:id')
   .put(verifyToken, checkAccess('products'), updateProduct)
