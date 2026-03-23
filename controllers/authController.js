@@ -194,10 +194,37 @@ const getMe = async (req, res) => {
   }
 };
 
+// @desc    Update current user profile info (name, phone, address, etc.)
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateMe = async (req, res) => {
+  try {
+    const employee = await Employee.findById(req.employee._id).select('-password');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Explicitly update only allowed fields
+    if (req.body.name) employee.name = req.body.name;
+    if (req.body.email) employee.email = req.body.email;
+    if (req.body.phone) employee.phone = req.body.phone;
+    if (req.body.address) employee.address = req.body.address;
+    if (req.body.avatar) employee.avatar = req.body.avatar;
+    if (req.body.dob) employee.dob = req.body.dob;
+
+    await employee.save();
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   changePassword,
   updateProfilePassword,
+  updateMe,
   getMe
 };
