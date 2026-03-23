@@ -19,7 +19,10 @@ const ProductionTarget = require('../models/ProductionTarget');
 const updateTargetProgress = async (date, productSize, qtyChange) => {
   try {
     // Find matching target
-    const target = await ProductionTarget.findOne({ date, productSize });
+    const target = await ProductionTarget.findOne({ 
+      date, 
+      productSize: productSize.toLowerCase().trim() 
+    });
     if (target) {
       target.producedQty = (target.producedQty || 0) + Number(qtyChange);
       target.remainingQty = Math.max(target.targetQty - target.producedQty, 0);
@@ -39,13 +42,20 @@ const createProduction = async (req, res) => {
   try {
     const { date, operator, product, size, grade, quantity, time } = req.body;
     const qty = parseInt(quantity || 0);
+    const normalizedProduct = (product || "").trim();
+    const normalizedSize = (size || "").trim();
+    const normalizedOperator = (operator || "").trim();
 
     // Update the Production Plan Target
-    await updateTargetProgress(date, size, qty);
+    await updateTargetProgress(date, normalizedSize, qty);
     
     // Check if exactly matching record exists
     const existing = await Production.findOne({
-      date, operator, product, size, grade
+      date, 
+      operator: normalizedOperator, 
+      product: normalizedProduct, 
+      size: normalizedSize, 
+      grade
     });
 
     if (existing) {
@@ -58,6 +68,9 @@ const createProduction = async (req, res) => {
 
     const recordData = {
       ...req.body,
+      product: normalizedProduct,
+      size: normalizedSize,
+      operator: normalizedOperator,
       recordedBy: req.employee?.name || 'Unknown'
     };
     const record = await Production.create(recordData);
