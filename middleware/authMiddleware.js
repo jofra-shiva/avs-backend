@@ -49,12 +49,20 @@ const checkAccess = (moduleName) => {
     if (moduleName === 'products' && (modules.includes('production') || modules.includes('sales'))) {
       hasAccess = true;
     }
-    // If requesting employees, allow if user has production or attendance access
-    if (moduleName === 'employees' && (modules.includes('production') || modules.includes('attendance'))) {
+    // If requesting employees, allow if user has production, attendance, or sales access
+    if (moduleName === 'employees' && (modules.includes('production') || modules.includes('attendance') || modules.includes('sales'))) {
       hasAccess = true;
     }
     // If requesting clients, allow if user has sales access
     if (moduleName === 'clients' && modules.includes('sales')) {
+      hasAccess = true;
+    }
+    // If requesting production (ONLY for reading), allow if user has sales or stock access
+    if (moduleName === 'production' && req.method === 'GET' && (modules.includes('sales') || modules.includes('stock'))) {
+      hasAccess = true;
+    }
+    // If requesting sales (ONLY for reading), allow if user has production or stock access
+    if (moduleName === 'sales' && req.method === 'GET' && (modules.includes('production') || modules.includes('stock'))) {
       hasAccess = true;
     }
 
