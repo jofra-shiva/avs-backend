@@ -12,7 +12,8 @@ const VALID_MODULES = [
   "employees",
   "attendance",
   "clients",
-  "sales"
+  "sales",
+  "expenses"
 ];
 
 // @route   GET /api/admin/modules
