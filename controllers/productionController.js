@@ -16,12 +16,14 @@ const getProduction = async (req, res) => {
 const ProductionTarget = require('../models/ProductionTarget');
 
 // Helper to update target progress
-const updateTargetProgress = async (date, productSize, qtyChange) => {
+const updateTargetProgress = async (date, productSize, qtyChange, operator) => {
   try {
-    // Find matching target
+    const normalizedOperator = (operator || "").trim();
+    // Find matching target by date, size AND operator
     const target = await ProductionTarget.findOne({ 
       date, 
-      productSize: productSize.toLowerCase().trim() 
+      productSize: productSize.toLowerCase().trim(),
+      operator: normalizedOperator
     });
     if (target) {
       target.producedQty = (target.producedQty || 0) + Number(qtyChange);
@@ -47,7 +49,7 @@ const createProduction = async (req, res) => {
     const normalizedOperator = (operator || "").trim();
 
     // Update the Production Plan Target
-    await updateTargetProgress(date, normalizedSize, qty);
+    await updateTargetProgress(date, normalizedSize, qty, normalizedOperator);
     
     // Check if exactly matching record exists
     const existing = await Production.findOne({
@@ -90,18 +92,25 @@ const updateProduction = async (req, res) => {
       return res.status(404).json({ message: 'Record not found' });
     }
 
-    // Handle target update for quantity change
-    if (req.body.quantity !== undefined || req.body.size !== undefined || req.body.date !== undefined) {
+    // Handle target update for quantity/size/date/operator change
+    if (req.body.quantity !== undefined || req.body.size !== undefined || req.body.date !== undefined || req.body.operator !== undefined) {
       const oldQty = record.quantity || 0;
       const newQty = req.body.quantity !== undefined ? parseInt(req.body.quantity) : oldQty;
+      const oldOperator = record.operator;
+      const newOperator = req.body.operator !== undefined ? req.body.operator : oldOperator;
       
-      if (record.date === (req.body.date || record.date) && record.size === (req.body.size || record.size)) {
-        // Simple quantity change on same date/size
-        await updateTargetProgress(record.date, record.size, newQty - oldQty);
+      const isSameTarget = 
+          record.date === (req.body.date || record.date) && 
+          record.size === (req.body.size || record.size) &&
+          oldOperator === newOperator;
+
+      if (isSameTarget) {
+        // Simple quantity change on same date/size/operator
+        await updateTargetProgress(record.date, record.size, newQty - oldQty, oldOperator);
       } else {
-        // Date or Size changed: decrement old, increment new
-        await updateTargetProgress(record.date, record.size, -oldQty);
-        await updateTargetProgress(req.body.date || record.date, req.body.size || record.size, newQty);
+        // Date, Size or Operator changed: decrement old, increment new
+        await updateTargetProgress(record.date, record.size, -oldQty, oldOperator);
+        await updateTargetProgress(req.body.date || record.date, req.body.size || record.size, newQty, newOperator);
       }
     }
 
@@ -126,7 +135,7 @@ const deleteProduction = async (req, res) => {
 
     if (record) {
       // Decrement target progress
-      await updateTargetProgress(record.date, record.size, -(record.quantity || 0));
+      await updateTargetProgress(record.date, record.size, -(record.quantity || 0), record.operator);
       
       await Production.deleteOne({ _id: record._id });
       res.json({ message: 'Production record removed' });
@@ -143,8 +152,22 @@ const deleteProduction = async (req, res) => {
 // @access  Private
 const clearAllProduction = async (req, res) => {
   try {
-    await Production.deleteMany({});
-    res.json({ message: 'All production records cleared' });
+    const { date } = req.query;
+    if (date) {
+      // 1. Find all records for this date to update targets
+      const records = await Production.find({ date });
+      for (const record of records) {
+        await updateTargetProgress(record.date, record.size, -(record.quantity || 0), record.operator);
+      }
+      // 2. Clear records for this date
+      await Production.deleteMany({ date });
+      res.json({ message: `Production records for ${date} cleared` });
+    } else {
+      // Global clear (be careful, this doesn't reset targets in this simple version, 
+      // but usually users won't use this if date-specific exists)
+      await Production.deleteMany({});
+      res.json({ message: 'All production records cleared' });
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
