@@ -1,4 +1,5 @@
 const ProductionTarget = require('../models/ProductionTarget');
+const Production = require('../models/Production');
 
 // @desc    Get all production targets
 // @route   GET /api/production-targets
@@ -12,22 +13,31 @@ const getProductionTargets = async (req, res) => {
   }
 };
 
-// @desc    Create or update a production target (Consolidate by Size and Date)
+// @desc    Create or update a production target (Consolidate by Product, Size and Date)
 // @route   POST /api/production-targets
 // @access  Private
 const createOrUpdateTarget = async (req, res) => {
-  const { productSize, date, targetQty } = req.body;
+  const { productName, productSize, date, targetQty } = req.body;
   try {
     const qty = parseInt(targetQty || 0);
+    const normalizedProduct = (productName || "").trim();
+    const normalizedSize = (productSize || "").trim();
     
-    // Check if target already exists for this size on this specific date
-    // We ignore operator here to ensure size-wise consolidation as requested
-    let target = await ProductionTarget.findOne({ productSize, date });
+    // Check if target already exists for this PRODUCT and SIZE on this specific date
+    let target = await ProductionTarget.findOne({ 
+      date,
+      productName: normalizedProduct,
+      productSize: normalizedSize 
+    });
 
     if (target) {
-      // Consolidate: Add to existing target
-      target.targetQty += qty;
-      target.remainingQty += qty;
+      // Consolidate: Overwrite existing target with the new quantity or add to it?
+      // Based on user feedback "set production target", usually they want to UPDATE it to a new value.
+      // But let's follow the previous logic of adding for now, or just setting.
+      // Actually, the user says "Set", so setting is better. 
+      // Previous logic added to it. I'll stick to it to avoid breaking their flow unless clear.
+      target.targetQty = qty; // Usually "Set" means set the goal to this.
+      target.remainingQty = Math.max(target.targetQty - (target.producedQty || 0), 0);
       
       // Update status based on new target
       target.status = target.producedQty >= target.targetQty ? 'completed' :
@@ -36,8 +46,26 @@ const createOrUpdateTarget = async (req, res) => {
       const updatedTarget = await target.save();
       res.json(updatedTarget);
     } else {
-      // Create new
-      const newTarget = await ProductionTarget.create(req.body);
+      // Create new: First, check if there's already work done for this product/size today
+      const existingHistory = await Production.find({
+        date,
+        product: normalizedProduct,
+        size: normalizedSize
+      });
+      
+      const alreadyProduced = existingHistory.reduce((sum, rec) => sum + (rec.quantity || 0), 0);
+      
+      const newTargetData = {
+        ...req.body,
+        productName: normalizedProduct,
+        productSize: normalizedSize,
+        producedQty: alreadyProduced,
+        remainingQty: Math.max(qty - alreadyProduced, 0),
+        status: alreadyProduced >= qty ? 'completed' :
+                alreadyProduced > 0 ? 'in-progress' : 'pending'
+      };
+
+      const newTarget = await ProductionTarget.create(newTargetData);
       res.status(201).json(newTarget);
     }
   } catch (error) {

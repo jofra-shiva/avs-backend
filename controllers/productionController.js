@@ -16,21 +16,38 @@ const getProduction = async (req, res) => {
 const ProductionTarget = require('../models/ProductionTarget');
 
 // Helper to update target progress
-const updateTargetProgress = async (date, productSize, qtyChange, operator) => {
+const updateTargetProgress = async (date, productSize, qtyChange, operator, productName) => {
   try {
     const normalizedOperator = (operator || "").trim();
-    // Find matching target by date, size AND operator
-    const target = await ProductionTarget.findOne({ 
-      date, 
-      productSize: productSize.toLowerCase().trim(),
-      operator: normalizedOperator
+    const normalizedProduct = (productName || "").trim();
+    const normalizedSize = (productSize || "").toLowerCase().trim();
+
+    // 1. Try to find matching target by date, product, size AND operator (Case Insensitive)
+    let target = await ProductionTarget.findOne({ 
+      date: date.trim(),
+      productName: { $regex: new RegExp("^" + normalizedProduct + "$", "i") },
+      productSize: { $regex: new RegExp("^" + normalizedSize + "$", "i") },
+      operator: { $regex: new RegExp("^" + normalizedOperator + "$", "i") }
     });
+
+    // 2. Fallback: Try to find target by date, product and size (regardless of operator, Case Insensitive)
+    if (!target) {
+      target = await ProductionTarget.findOne({
+        date: date.trim(),
+        productName: { $regex: new RegExp("^" + normalizedProduct + "$", "i") },
+        productSize: { $regex: new RegExp("^" + normalizedSize + "$", "i") }
+      });
+    }
+
     if (target) {
+      console.log(`[TARGET MATCHED] Updating ${normalizedProduct} ${normalizedSize} by ${qtyChange}`);
       target.producedQty = (target.producedQty || 0) + Number(qtyChange);
       target.remainingQty = Math.max(target.targetQty - target.producedQty, 0);
       target.status = target.producedQty >= target.targetQty ? 'completed' :
                       target.producedQty > 0 ? 'in-progress' : 'pending';
       await target.save();
+    } else {
+      console.warn(`[TARGET NOT FOUND] for product: ${normalizedProduct}, size: ${normalizedSize}, date: ${date}, operator: ${normalizedOperator}`);
     }
   } catch (error) {
     console.error("Error updating target progress:", error);
@@ -49,7 +66,7 @@ const createProduction = async (req, res) => {
     const normalizedOperator = (operator || "").trim();
 
     // Update the Production Plan Target
-    await updateTargetProgress(date, normalizedSize, qty, normalizedOperator);
+    await updateTargetProgress(date, normalizedSize, qty, normalizedOperator, normalizedProduct);
     
     // Check if exactly matching record exists
     const existing = await Production.findOne({
@@ -93,24 +110,27 @@ const updateProduction = async (req, res) => {
     }
 
     // Handle target update for quantity/size/date/operator change
-    if (req.body.quantity !== undefined || req.body.size !== undefined || req.body.date !== undefined || req.body.operator !== undefined) {
+    if (req.body.quantity !== undefined || req.body.size !== undefined || req.body.date !== undefined || req.body.operator !== undefined || req.body.product !== undefined) {
       const oldQty = record.quantity || 0;
       const newQty = req.body.quantity !== undefined ? parseInt(req.body.quantity) : oldQty;
       const oldOperator = record.operator;
       const newOperator = req.body.operator !== undefined ? req.body.operator : oldOperator;
+      const oldProduct = record.product;
+      const newProduct = req.body.product !== undefined ? req.body.product : oldProduct;
       
       const isSameTarget = 
           record.date === (req.body.date || record.date) && 
           record.size === (req.body.size || record.size) &&
-          oldOperator === newOperator;
+          oldOperator === newOperator &&
+          oldProduct === newProduct;
 
       if (isSameTarget) {
-        // Simple quantity change on same date/size/operator
-        await updateTargetProgress(record.date, record.size, newQty - oldQty, oldOperator);
+        // Simple quantity change on same target
+        await updateTargetProgress(record.date, record.size, newQty - oldQty, oldOperator, oldProduct);
       } else {
-        // Date, Size or Operator changed: decrement old, increment new
-        await updateTargetProgress(record.date, record.size, -oldQty, oldOperator);
-        await updateTargetProgress(req.body.date || record.date, req.body.size || record.size, newQty, newOperator);
+        // Target attributes changed: decrement old, increment new
+        await updateTargetProgress(record.date, record.size, -oldQty, oldOperator, oldProduct);
+        await updateTargetProgress(req.body.date || record.date, req.body.size || record.size, newQty, newOperator, newProduct);
       }
     }
 
@@ -135,7 +155,7 @@ const deleteProduction = async (req, res) => {
 
     if (record) {
       // Decrement target progress
-      await updateTargetProgress(record.date, record.size, -(record.quantity || 0), record.operator);
+      await updateTargetProgress(record.date, record.size, -(record.quantity || 0), record.operator, record.product);
       
       await Production.deleteOne({ _id: record._id });
       res.json({ message: 'Production record removed' });
@@ -157,7 +177,7 @@ const clearAllProduction = async (req, res) => {
       // 1. Find all records for this date to update targets
       const records = await Production.find({ date });
       for (const record of records) {
-        await updateTargetProgress(record.date, record.size, -(record.quantity || 0), record.operator);
+        await updateTargetProgress(record.date, record.size, -(record.quantity || 0), record.operator, record.product);
       }
       // 2. Clear records for this date
       await Production.deleteMany({ date });
