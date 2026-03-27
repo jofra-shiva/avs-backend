@@ -25,43 +25,33 @@ const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 
-// Enable CORS - Using environment variable from Vercel where possible
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const frontendUrl = process.env.FRONTEND_URL?.replace(/\/$/, "");
-  
-  // Whitelist based on environment variable and standard defaults
-  const allowedOrigins = [
-    'https://avseco-f.vercel.app',
-    'http://localhost:3000',
-    'http://localhost:5173',
-    frontendUrl
-  ].filter(Boolean);
+// Enable CORS using standard middleware for better compatibility
+const allowedOrigins = [
+  'https://avseco-f.vercel.app',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL?.replace(/\/$/, "")
+].filter(Boolean);
 
-  if (!origin) {
-    // Allow non-browser requests
-    next();
-  } else if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow non-browser requests (like Postman or server-to-server)
+    if (!origin) return callback(null, true);
     
-    if (req.method === 'OPTIONS') {
-      return res.status(200).end();
+    const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`Blocked by CORS: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
     }
-    next();
-  } else {
-    // Even if origin is not explicitly allowed, we should still handle preflights gracefully
-    // to avoid hard crashes, but strictly we don't send the allow-origin header.
-    if (req.method === 'OPTIONS') {
-      res.setHeader('Access-Control-Allow-Origin', origin); // Temporary allow for debug
-      res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-      return res.status(200).end();
-    }
-    next();
-  }
-});
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['X-CSRF-Token', 'X-Requested-With', 'Accept', 'Accept-Version', 'Content-Length', 'Content-MD5', 'Content-Type', 'Date', 'X-Api-Version', 'Authorization']
+}));
 
 // Body parser
 app.use(express.json());
