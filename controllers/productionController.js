@@ -1,4 +1,5 @@
 const Production = require('../models/Production');
+const { createNotification } = require('../utils/notificationUtils');
 
 // @desc    Get all production records
 // @route   GET /api/production
@@ -93,6 +94,15 @@ const createProduction = async (req, res) => {
       recordedBy: req.employee?.name || 'Unknown'
     };
     const record = await Production.create(recordData);
+
+    // Trigger notification for Admin
+    await createNotification({
+      type: 'production',
+      title: 'New Production Entry',
+      message: `${record.operator} produced ${record.quantity} pcs of ${record.product} (${record.size}).`,
+      link: '/production/daily'
+    });
+
     res.status(201).json(record);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -139,6 +149,15 @@ const updateProduction = async (req, res) => {
       req.body,
       { new: true }
     );
+
+    // Trigger notification for Admin
+    await createNotification({
+      type: 'production',
+      title: 'Production Record Updated',
+      message: `Production record for ${updatedRecord.product} (${updatedRecord.size}) by ${updatedRecord.operator} was updated.`,
+      link: '/production/daily'
+    });
+
     res.json(updatedRecord);
   } catch (error) {
     res.status(400).json({ message: error.message });
