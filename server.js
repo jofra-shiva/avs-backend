@@ -95,7 +95,7 @@ const initializeApp = async () => {
         password: adminPassword,
         role: 'admin',
         department: 'Management',
-        modules: ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports"]
+        modules: ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports", "expenses", "notifications"]
       };
 
       const admin = await Employee.findOne({ email: adminEmail });
