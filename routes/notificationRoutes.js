@@ -4,7 +4,8 @@ const {
   getNotifications, 
   markAsRead, 
   markAllAsRead, 
-  sendPushNotification 
+  sendPushNotification,
+  respondToNotification
 } = require('../controllers/notificationController');
 const { verifyToken, adminOnly } = require('../middleware/authMiddleware');
 
