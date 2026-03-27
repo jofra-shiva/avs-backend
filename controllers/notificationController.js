@@ -86,9 +86,47 @@ const sendPushNotification = async (req, res) => {
   }
 };
 
+// @desc    Respond to a notification (Employee feedback)
+// @route   POST /api/notifications/:id/respond
+// @access  Private
+const respondToNotification = async (req, res) => {
+  try {
+    const { status, reason } = req.body;
+    let originalNotif = await Notification.findById(req.params.id);
+    
+    if (!originalNotif) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    // Determine recipient - send back to sender or all admins if system sent
+    let recipientId = originalNotif.sender || null;
+    
+    const statusLabel = status === 'ok' ? '✅ ACKNOWLEDGED' : '❌ DISAGREED / PROBLEM';
+    const message = `Response to "${originalNotif.title}":\n\nStatus: ${statusLabel}\nReason: ${reason || 'N/A'}`;
+
+    await createNotification({
+      recipientId,
+      senderId: req.employee._id,
+      type: 'admin_push', // Re-use push type for admin alerts
+      title: `Employee Feedback: ${req.employee.name}`,
+      message,
+      link: '/admin/push-notifications'
+    });
+
+    // Auto-mark original as read
+    originalNotif.isRead = true;
+    await originalNotif.save();
+
+    res.status(201).json({ message: 'Response sent successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getNotifications,
   markAsRead,
   markAllAsRead,
-  sendPushNotification
+  sendPushNotification,
+  respondToNotification
 };
