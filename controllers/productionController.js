@@ -98,8 +98,9 @@ const createProduction = async (req, res) => {
     // Trigger notification for Admin
     await createNotification({
       type: 'production',
-      title: 'New Production Entry',
-      message: `${record.operator} produced ${record.quantity} pcs of ${record.product} (${record.size}).`,
+      senderId: req.employee?._id,
+      title: '[PRODUCTION] New Entry',
+      message: `${record.operator} produced ${record.quantity} pcs of ${record.product} (${record.size}) - Logged by ${req.employee?.name || 'System'}.`,
       link: '/production/daily'
     });
 
@@ -153,8 +154,9 @@ const updateProduction = async (req, res) => {
     // Trigger notification for Admin
     await createNotification({
       type: 'production',
-      title: 'Production Record Updated',
-      message: `Production record for ${updatedRecord.product} (${updatedRecord.size}) by ${updatedRecord.operator} was updated.`,
+      senderId: req.employee?._id,
+      title: '[PRODUCTION] Entry Updated',
+      message: `Production record for ${updatedRecord.product} (${updatedRecord.size}) by ${updatedRecord.operator} was updated by ${req.employee?.name || 'System'}.`,
       link: '/production/daily'
     });
 

@@ -27,7 +27,8 @@ const logSale = async (req, res) => {
     // Trigger notification for Admin
     await createNotification({
       type: 'sale',
-      title: 'New Sale Logged',
+      senderId: req.employee?._id,
+      title: '[SALES] New Sale Logged',
       message: `A new sale of ₹${(sale.totalAmount || sale.amount || 0).toLocaleString()} for ${sale.customerName || 'Walk-in'} was logged by ${sale.recordedBy}.`,
       link: '/sales'
     });
@@ -52,7 +53,8 @@ const updateSale = async (req, res) => {
     // Trigger notification for Admin
     await createNotification({
       type: 'sale',
-      title: 'Sale Updated',
+      senderId: req.employee?._id,
+      title: '[SALES] Sale Updated',
       message: `Sale record for ${updated.customerName || 'Walk-in'} was updated by ${req.employee?.name || 'Admin'}.`,
       link: '/sales'
     });

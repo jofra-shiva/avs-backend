@@ -36,8 +36,9 @@ const upsertAttendance = async (req, res) => {
     // Trigger notification for Admin
     await createNotification({
       type: 'attendance',
-      title: 'Attendance Updated',
-      message: `Attendance records for ${date} have been updated.`,
+      senderId: req.employee?._id,
+      title: '[ATTENDANCE] Records Updated',
+      message: `Attendance records for ${date} have been updated by ${req.employee?.name || 'System'}.`,
       link: `/attendance?date=${date}`
     });
 

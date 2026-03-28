@@ -33,6 +33,12 @@ const notificationSchema = mongoose.Schema(
       type: String,
       required: false,
     },
+    // TTL Index: Automatically delete after 24 hours (86400 seconds)
+    createdAt: { 
+      type: Date, 
+      default: Date.now, 
+      index: { expires: 86400 } 
+    }
   },
   {
     timestamps: true,
@@ -40,3 +46,4 @@ const notificationSchema = mongoose.Schema(
 );
 
 module.exports = mongoose.model('Notification', notificationSchema);
+
