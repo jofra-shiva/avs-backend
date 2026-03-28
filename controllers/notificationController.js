@@ -107,7 +107,7 @@ const respondToNotification = async (req, res) => {
     await createNotification({
       recipientId,
       senderId: req.employee._id,
-      type: 'admin_push', // Re-use push type for admin alerts
+      type: 'feedback', // Clear feedback type
       title: `Employee Feedback: ${req.employee.name}`,
       message,
       link: '/admin/push-notifications'
