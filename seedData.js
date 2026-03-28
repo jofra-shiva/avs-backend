@@ -67,10 +67,10 @@ const productsData = [
 ];
 
 const productionData = [
-    { date: "2026-02-20", size: "6-inch", count: 1450, efficiency: "96%" },
-    { date: "2026-02-20", size: "8-inch", count: 1220, efficiency: "94%" },
-    { date: "2026-02-20", size: "10-inch", count: 850, efficiency: "89%" },
-    { date: "2026-02-20", size: "12-inch", count: 620, efficiency: "92%" },
+    { date: "2026-02-20", size: "6-inch", quantity: 1450, grade: "A", operator: "Rajesh Kumar" },
+    { date: "2026-02-20", size: "8-inch", quantity: 1220, grade: "A", operator: "Priya Sharma" },
+    { date: "2026-02-20", size: "10-inch", quantity: 850, grade: "B", operator: "Vikram Singh" },
+    { date: "2026-02-20", size: "12-inch", quantity: 620, grade: "A", operator: "Karthik Rajan" },
 ];
 
 const importData = async () => {

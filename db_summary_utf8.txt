@@ -1,0 +1,26 @@
+
+--- PRODUCTS ---
+Name | Size | Price | Stock
+Areca Plate | 6-inch | 4 | 15200
+Areca Plate | 8-inch | 6 | 11800
+Areca Plate | 10-inch | 8 | 9200
+Areca Plate | 12-inch | 10 | 7600
+
+--- RECENT SALES ---
+Invoice | Customer | Amount | Status
+INV-589236 | Rahul Sharma | 400 | Paid
+INV-127439 | Rahul Sharma | 1400 | Paid
+INV-046923 | Rahul Sharma | 1600 | Paid
+
+--- CLIENTS ---
+Company | Contact | Phone
+Eco Products Ltd | Rahul Sharma | +91 98765 43210
+Green Earth Solutions | Priya Patel | +91 87654 32109
+ | Harsath | +91 9876543210
+
+--- RECENT EXPENSES ---
+Description | Amount | Date
+Raw Material – Steel Sheets | 45000 | 2026-02-19
+Repair of CNC Machine | 15000 | 2026-02-18
+Advance Salary for Rahul | 5000 | 2026-02-10
+Office Stationery | 1200 | 2026-01-15
