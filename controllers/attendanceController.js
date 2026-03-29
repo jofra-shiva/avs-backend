@@ -48,7 +48,20 @@ const upsertAttendance = async (req, res) => {
   }
 };
 
+const getAttendanceByYear = async (req, res) => {
+  try {
+    const year = req.params.year;
+    // Match date string starting with the year YYYY-
+    const records = await Attendance.find({ date: { $regex: `^${year}-` } })
+      .populate('employee', 'name department empId');
+    res.json(records);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getAttendanceByDate,
+  getAttendanceByYear,
   upsertAttendance,
 };
