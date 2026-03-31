@@ -19,11 +19,25 @@ const getProducts = async (req, res) => {
 // @access  Private
 const createProduct = async (req, res) => {
   try {
+    const handleProduct = async (data) => {
+      // Check if a soft-deleted product with this SKU already exists
+      const existing = await Product.findOne({ sku: data.sku, isDeleted: true });
+      if (existing) {
+        // Restore and update existing record
+        Object.assign(existing, data, { isDeleted: false });
+        return await existing.save();
+      }
+      return await Product.create(data);
+    };
+
     if (Array.isArray(req.body)) {
-      const products = await Product.insertMany(req.body);
-      res.status(201).json(products);
+      const results = [];
+      for (const item of req.body) {
+        results.push(await handleProduct(item));
+      }
+      res.status(201).json(results);
     } else {
-      const product = await Product.create(req.body);
+      const product = await handleProduct(req.body);
       res.status(201).json(product);
     }
   } catch (error) {
