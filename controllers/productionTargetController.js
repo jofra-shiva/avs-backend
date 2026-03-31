@@ -6,7 +6,7 @@ const Production = require('../models/Production');
 // @access  Private
 const getProductionTargets = async (req, res) => {
   try {
-    const targets = await ProductionTarget.find({}).sort({ createdAt: -1 });
+    const targets = await ProductionTarget.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
     res.json(targets);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -27,7 +27,8 @@ const createOrUpdateTarget = async (req, res) => {
     let target = await ProductionTarget.findOne({ 
       date,
       productName: normalizedProduct,
-      productSize: normalizedSize 
+      productSize: normalizedSize,
+      isDeleted: { $ne: true }
     });
 
     if (target) {

@@ -1,11 +1,13 @@
 const Product = require('../models/Product');
+const ProductionTarget = require('../models/ProductionTarget');
+const Production = require('../models/Production');
 
 // @desc    Get all products
 // @route   GET /api/products
 // @access  Private
 const getProducts = async (req, res) => {
   try {
-    const products = await Product.find({});
+    const products = await Product.find({ isDeleted: { $ne: true } });
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -56,10 +58,34 @@ const updateProduct = async (req, res) => {
 const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-
+    
     if (product) {
-      await Product.deleteOne({ _id: product._id });
-      res.json({ message: 'Product removed' });
+      const productName = product.name;
+      const productSize = product.size;
+      const productSku = product.sku;
+
+      // Soft delete the product
+      product.isDeleted = true;
+      await product.save();
+
+      // Soft delete related Production Targets (Production Plan)
+      await ProductionTarget.updateMany(
+        { 
+          $or: [
+            { sku: productSku },
+            { productName: productName, productSize: productSize }
+          ]
+        },
+        { $set: { isDeleted: true } }
+      );
+
+      // Soft delete related Production Records (Daily production)
+      await Production.updateMany(
+        { product: productName, size: productSize },
+        { $set: { isDeleted: true } }
+      );
+
+      res.json({ message: 'Product and related operational records removed (soft-deleted)' });
     } else {
       res.status(404).json({ message: 'Product not found' });
     }
