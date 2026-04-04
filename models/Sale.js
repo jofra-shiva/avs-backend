@@ -6,7 +6,8 @@ const saleItemSchema = mongoose.Schema({
   size: { type: String, required: true },
   qty: { type: Number, required: true },
   amount: { type: Number, required: true },
-  unit: { type: String, default: 'pcs' }
+  unit: { type: String, default: 'pcs' },
+  hsn: { type: String }
 });
 
 const saleSchema = mongoose.Schema({

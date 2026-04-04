@@ -1,4 +1,5 @@
 const Attendance = require('../models/Attendance');
+const { createNotification } = require('../utils/notificationUtils');
 
 // @desc    Get attendance for a date
 // @route   GET /api/attendance/:date
@@ -31,6 +32,16 @@ const upsertAttendance = async (req, res) => {
 
     await Attendance.bulkWrite(operations);
     const updatedRecords = await Attendance.find({ date });
+
+    // Trigger notification for Admin
+    await createNotification({
+      type: 'attendance',
+      senderId: req.employee?._id,
+      title: '[ATTENDANCE] Records Updated',
+      message: `Attendance records for ${date} have been updated by ${req.employee?.name || 'System'}.`,
+      link: `/attendance?date=${date}`
+    });
+
     res.json(updatedRecords);
   } catch (error) {
     res.status(400).json({ message: error.message });

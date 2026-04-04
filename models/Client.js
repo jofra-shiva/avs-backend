@@ -5,7 +5,7 @@ const clientSchema = mongoose.Schema({
   companyName: { type: String }, // Made optional to support Individual/Personal clients
   contactPerson: { type: String, required: true },
   email: { type: String },
-  phone: { type: String },
+  phone: { type: String, required: true },
   status: { type: String, default: 'Active' },
   totalOrders: { type: Number, default: 0 },
   totalSpent: { type: String },

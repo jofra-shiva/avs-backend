@@ -9,6 +9,7 @@ const productSchema = mongoose.Schema({
   sellPrice: { type: Number, default: 0 },
   margin: { type: String },
   stock: { type: Number, default: 0 },
+  hsnCode: { type: String, default: '' },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema);

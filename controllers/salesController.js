@@ -1,4 +1,5 @@
 const Sale = require('../models/Sale');
+const { createNotification } = require('../utils/notificationUtils');
 
 // @desc    Get all sales
 // @route   GET /api/sales
@@ -22,6 +23,16 @@ const logSale = async (req, res) => {
       recordedBy: req.employee?.name || 'Unknown'
     };
     const sale = await Sale.create(saleData);
+
+    // Trigger notification for Admin
+    await createNotification({
+      type: 'sale',
+      senderId: req.employee?._id,
+      title: '[SALES] New Sale Logged',
+      message: `A new sale of ₹${(sale.totalAmount || sale.amount || 0).toLocaleString()} for ${sale.customerName || 'Walk-in'} was logged by ${sale.recordedBy}.`,
+      link: '/sales'
+    });
+
     res.status(201).json(sale);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -38,6 +49,16 @@ const updateSale = async (req, res) => {
       return res.status(404).json({ message: 'Sale not found' });
     }
     const updated = await Sale.findByIdAndUpdate(req.params.id, req.body, { new: true });
+
+    // Trigger notification for Admin
+    await createNotification({
+      type: 'sale',
+      senderId: req.employee?._id,
+      title: '[SALES] Sale Updated',
+      message: `Sale record for ${updated.customerName || 'Walk-in'} was updated by ${req.employee?.name || 'Admin'}.`,
+      link: '/sales'
+    });
+
     res.json(updated);
   } catch (error) {
     res.status(400).json({ message: error.message });
