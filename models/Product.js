@@ -10,6 +10,7 @@ const productSchema = mongoose.Schema({
   margin: { type: String },
   stock: { type: Number, default: 0 },
   hsnCode: { type: String, default: '' },
+  isDeleted: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema);

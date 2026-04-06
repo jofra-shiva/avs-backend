@@ -10,6 +10,7 @@ const productionSchema = mongoose.Schema({
   operator: { type: String },
   status: { type: String, default: 'completed' },
   recordedBy: { type: String },
+  isDeleted: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Production', productionSchema);

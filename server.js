@@ -169,6 +169,10 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/turnover', turnoverRoutes);
+<<<<<<< HEAD
+=======
+app.use('/api/analytics', turnoverRoutes);
+>>>>>>> 9a2c2f56d86f12dfc80c527d3013ce8c50eaa58a
 
 // Silent favicon handler to prevent 404 logs
 app.get('/favicon.ico', (req, res) => res.status(204).end());

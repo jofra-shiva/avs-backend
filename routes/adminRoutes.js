@@ -14,7 +14,8 @@ const VALID_MODULES = [
   "clients",
   "sales",
   "expenses",
-  "notifications"
+  "notifications",
+  "turnover"
 ];
 
 // @route   GET /api/admin/modules

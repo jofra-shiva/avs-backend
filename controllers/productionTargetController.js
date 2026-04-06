@@ -6,7 +6,7 @@ const Production = require('../models/Production');
 // @access  Private
 const getProductionTargets = async (req, res) => {
   try {
-    const targets = await ProductionTarget.find({}).sort({ createdAt: -1 });
+    const targets = await ProductionTarget.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
     res.json(targets);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -27,7 +27,8 @@ const createOrUpdateTarget = async (req, res) => {
     let target = await ProductionTarget.findOne({ 
       date,
       productName: normalizedProduct,
-      productSize: normalizedSize 
+      productSize: normalizedSize,
+      isDeleted: { $ne: true }
     });
 
     if (target) {
@@ -104,8 +105,9 @@ const deleteProductionTarget = async (req, res) => {
     const target = await ProductionTarget.findById(req.params.id);
 
     if (target) {
-      await ProductionTarget.deleteOne({ _id: target._id });
-      res.json({ message: 'Target removed' });
+      target.isDeleted = true;
+      await target.save();
+      res.json({ message: 'Target removed (soft delete)' });
     } else {
       res.status(404).json({ message: 'Target not found' });
     }
@@ -119,8 +121,9 @@ const deleteProductionTarget = async (req, res) => {
 // @access  Private
 const clearAllTargets = async (req, res) => {
   try {
-    await ProductionTarget.deleteMany({});
-    res.json({ message: 'All targets cleared' });
+    // Soft delete all
+    await ProductionTarget.updateMany({}, { isDeleted: true });
+    res.json({ message: 'All targets cleared (soft delete)' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

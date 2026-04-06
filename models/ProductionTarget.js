@@ -12,6 +12,7 @@ const productionTargetSchema = mongoose.Schema({
   size: { type: String },
   operator: { type: String, default: 'Rajesh' },
   date: { type: String, required: true }, // Store as YYYY-MM-DD
+  isDeleted: { type: Boolean, default: false },
 }, { timestamps: true });
 
 // Add indexes for faster fetching

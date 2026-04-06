@@ -6,7 +6,7 @@ const { createNotification } = require('../utils/notificationUtils');
 // @access  Private
 const getProduction = async (req, res) => {
   try {
-    const records = await Production.find({}).sort({ date: -1, createdAt: -1 });
+    const records = await Production.find({ isDeleted: { $ne: true } }).sort({ date: -1, createdAt: -1 });
     res.json(records);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -28,7 +28,8 @@ const updateTargetProgress = async (date, productSize, qtyChange, operator, prod
       date: date.trim(),
       productName: { $regex: new RegExp("^" + normalizedProduct + "$", "i") },
       productSize: { $regex: new RegExp("^" + normalizedSize + "$", "i") },
-      operator: { $regex: new RegExp("^" + normalizedOperator + "$", "i") }
+      operator: { $regex: new RegExp("^" + normalizedOperator + "$", "i") },
+      isDeleted: { $ne: true }
     });
 
     // 2. Fallback: Try to find target by date, product and size (regardless of operator, Case Insensitive)
@@ -36,7 +37,8 @@ const updateTargetProgress = async (date, productSize, qtyChange, operator, prod
       target = await ProductionTarget.findOne({
         date: date.trim(),
         productName: { $regex: new RegExp("^" + normalizedProduct + "$", "i") },
-        productSize: { $regex: new RegExp("^" + normalizedSize + "$", "i") }
+        productSize: { $regex: new RegExp("^" + normalizedSize + "$", "i") },
+        isDeleted: { $ne: true }
       });
     }
 
@@ -75,7 +77,8 @@ const createProduction = async (req, res) => {
       operator: normalizedOperator, 
       product: normalizedProduct, 
       size: normalizedSize, 
-      grade
+      grade,
+      isDeleted: { $ne: true }
     });
 
     if (existing) {
@@ -196,7 +199,7 @@ const clearAllProduction = async (req, res) => {
     const { date } = req.query;
     if (date) {
       // 1. Find all records for this date to update targets
-      const records = await Production.find({ date });
+      const records = await Production.find({ date, isDeleted: { $ne: true } });
       for (const record of records) {
         await updateTargetProgress(record.date, record.size, -(record.quantity || 0), record.operator, record.product);
       }
