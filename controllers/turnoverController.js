@@ -34,17 +34,25 @@ exports.getAnalytics = async (req, res) => {
     const parseDbDate = (dateStr) => {
       if (!dateStr) return null;
       try {
+        // 1. Check for DD-MM-YYYY or DD/MM/YYYY (with optional time after comma or space)
+        const dmyMatch = dateStr.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+        if (dmyMatch) {
+          return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
+        }
+
+        // 2. Check for YYYY-MM-DD or YYYY/MM/DD
+        const ymdMatch = dateStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+        if (ymdMatch) {
+          return `${ymdMatch[1]}-${ymdMatch[2].padStart(2, '0')}-${ymdMatch[3].padStart(2, '0')}`;
+        }
+
+        // 3. Native Date fallback for ISO formats
         const dObj = new Date(dateStr);
         if (!isNaN(dObj.getTime())) {
            const y = dObj.getFullYear();
            const m = String(dObj.getMonth() + 1).padStart(2, '0');
            const d = String(dObj.getDate()).padStart(2, '0');
            return `${y}-${m}-${d}`;
-        }
-        if (dateStr.includes(',')) {
-          const cleanDate = dateStr.split(',')[0].trim(); 
-          const parts = cleanDate.split('-');
-          return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
         return null;
       } catch (e) { return null; }
@@ -84,9 +92,10 @@ exports.getAnalytics = async (req, res) => {
     const prevContextDate = new Date(contextDate.getFullYear(), contextDate.getMonth() - 1, 1);
     const prevContextMonthStr = getMonthStr(prevContextDate);
 
-    // Padding for charts (last 12 months)
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(contextDate.getFullYear(), contextDate.getMonth() - i, 1);
+    // Padding for charts (Jan through Dec for selected year)
+    const contextYear = contextDate.getFullYear();
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(contextYear, i, 1);
       const mStr = getMonthStr(d);
       fullTrendIncomeData[mStr] = 0;
       monthlyProductionData[mStr] = 0;
@@ -98,7 +107,6 @@ exports.getAnalytics = async (req, res) => {
       const amt = Number(sale.totalAmount || 0);
 
       if (fullTrendIncomeData[mStr] !== undefined) fullTrendIncomeData[mStr] += amt;
-      else if (mStr !== "History") fullTrendIncomeData[mStr] = amt;
 
       if (mStr === contextMonthStr) currentPeriodIncome += amt;
       if (mStr === prevContextMonthStr) prevPeriodIncome += amt;
@@ -138,14 +146,18 @@ exports.getAnalytics = async (req, res) => {
       if (isWithinRange(prod.date, startDate, endDate)) {
         totalProductionQty += qty;
         if (monthlyProductionData[mStr] !== undefined) monthlyProductionData[mStr] += qty;
-        else monthlyProductionData[mStr] = qty;
         if (prod.size) {
           productionSizeDataMap[prod.size] = (productionSizeDataMap[prod.size] || 0) + qty;
         }
       }
     });
 
-    const formatChartLabel = m => m.includes('-') ? m.split('-')[1] + '/' + m.split('-')[0].substring(2) : m;
+    const formatChartLabel = m => {
+      if (!m.includes('-')) return m;
+      const [year, month] = m.split('-');
+      const date = new Date(year, month - 1);
+      return date.toLocaleString('default', { month: 'short' });
+    };
 
     const fullMonthlyChart = Object.keys(fullTrendIncomeData).sort().map(m => ({
       name: formatChartLabel(m), Income: fullTrendIncomeData[m]
