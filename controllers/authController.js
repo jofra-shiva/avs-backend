@@ -286,7 +286,7 @@ const forgotPassword = async (req, res) => {
     console.error('Forgot Password Technical Error:', error);
     
     // Check for specific config errors
-    if (error.message.includes('incomplete') || error.message.includes('missing')) {
+    if (error.message.includes('incomplete') || error.message.includes('missing') || error.message.includes('CONFIG_ERROR')) {
       return res.status(500).json({ 
         message: 'Server Config Error: SMTP credentials are not set on the server dashboard.',
         technical: error.message 
