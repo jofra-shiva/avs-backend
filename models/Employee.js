@@ -20,6 +20,8 @@ const employeeSchema = mongoose.Schema({
   role: { type: String, default: 'employee' },
   modules: { type: [String], default: [] },
   isFirstLogin: { type: Boolean, default: true },
+  resetPasswordToken: { type: String },
+  resetPasswordExpire: { type: Date },
 }, { timestamps: true });
 
 // Match user entered password to hashed password in database
