@@ -283,8 +283,20 @@ const forgotPassword = async (req, res) => {
 
     res.json({ message: 'Password reset link has been sent to your email' });
   } catch (error) {
-    console.error('Forgot Password Error:', error);
-    res.status(500).json({ message: 'Failed to send reset email. Please try again later.' });
+    console.error('Forgot Password Technical Error:', error);
+    
+    // Check for specific config errors
+    if (error.message.includes('incomplete') || error.message.includes('missing') || error.message.includes('CONFIG_ERROR')) {
+      return res.status(500).json({ 
+        message: 'Server Config Error: SMTP credentials are not set on the server dashboard.',
+        technical: error.message 
+      });
+    }
+
+    res.status(500).json({ 
+      message: 'Failed to send reset email. ' + (error.message || 'Please check server logs.'),
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
