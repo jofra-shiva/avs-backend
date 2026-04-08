@@ -135,10 +135,17 @@ const initializeApp = async () => {
 
 // Global middleware to ensure initialization is complete before handling requests
 app.use(async (req, res, next) => {
-  // Skip initialization check for health endpoint if needed, or include it
+  console.log(`[Request] ${req.method} ${req.originalUrl}`);
+  
+  // Skip initialization check for health endpoint
+  if (req.originalUrl === '/api/health') {
+    return next();
+  }
+
   const success = await initializeApp();
   
-  if (!success && req.path !== '/api/health') {
+  if (!success) {
+    console.error(`[Init] Initialization failed for ${req.method} ${req.originalUrl}`);
     return res.status(503).json({ 
       message: 'System is initializing or database is unavailable. Please try again in a moment.' 
     });

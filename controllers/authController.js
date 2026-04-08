@@ -233,14 +233,19 @@ const forgotPassword = async (req, res) => {
       return res.status(400).json({ message: 'Please provide your email address' });
     }
 
+    console.log(`Password reset request for: ${email}`);
+
     const searchRegex = new RegExp(`^${email.trim()}$`, 'i');
     const employee = await Employee.findOne({
       $or: [{ email: searchRegex }, { username: searchRegex }]
     });
 
     if (!employee) {
+      console.warn(`Forgot password failed: No account found for "${email}"`);
       return res.status(404).json({ message: 'No account found with this email address' });
     }
+
+    console.log(`Found employee: ${employee.name} (${employee.email || email}). Generating token...`);
 
     // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -275,11 +280,13 @@ const forgotPassword = async (req, res) => {
       </div>
     `;
 
+    console.log(`Attempting to send reset email to: ${employee.email || email}`);
     await sendEmail({
       to: employee.email || email,
       subject: 'AVSECO - Password Reset Request',
       html: htmlContent,
     });
+    console.log(`✅ Reset email sent successfully to: ${employee.email || email}`);
 
     res.json({ message: 'Password reset link has been sent to your email' });
   } catch (error) {
