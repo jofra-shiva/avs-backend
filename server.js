@@ -69,63 +69,37 @@ const initializeApp = async () => {
   initPromise = (async () => {
     try {
       const conn = await connectDB();
-      if (!conn) {
-        console.error('Database connection failed during initialization');
-        return false;
-      }
+      if (!conn) return false;
 
-      // --- BOOTSTRAP ADMIN (ONE-TIME SETUP) ---
-      const Employee = require('./models/Employee');
-      const adminEmail = 'admin@avseco.in';
-      const adminPassword = 'ceo@avseco';
-      
-      const adminData = {
-        name: 'Administrator',
-        email: adminEmail,
-        username: adminEmail,
-        password: adminPassword,
-        role: 'admin',
-        department: 'Management',
-        modules: ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports", "expenses", "notifications", "turnover"]
-      };
-
-      const admin = await Employee.findOne({ email: adminEmail });
-      
-      if (admin) {
-        // Compare current state to avoid redundant updates and hashing
-        const modulesChanged = JSON.stringify(admin.modules?.sort()) !== JSON.stringify(adminData.modules.sort());
-        const credentialsChanged = admin.visiblePassword !== adminPassword || admin.username !== adminEmail || admin.role !== 'admin';
-
-        if (modulesChanged || credentialsChanged) {
-          admin.password = adminPassword;
-          admin.role = 'admin';
-          admin.modules = adminData.modules;
-          admin.username = adminEmail;
-          await admin.save();
-          console.log(`✅ Bootstrap: Updated admin account configurations: ${adminEmail}`);
+      // Run non-critical bootstrap tasks in the background to avoid blocking the first request
+      (async () => {
+        try {
+          const Employee = require('./models/Employee');
+          const adminEmail = 'admin@avseco.in';
+          const adminPassword = 'ceo@avseco';
+          
+          const admin = await Employee.findOne({ email: adminEmail });
+          if (!admin) {
+            await Employee.create({
+              name: 'Administrator',
+              email: adminEmail,
+              username: adminEmail,
+              password: adminPassword,
+              role: 'admin',
+              department: 'Management',
+              modules: ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports", "expenses", "notifications", "turnover"]
+            });
+            console.log(`✅ Bootstrap: Created new admin account: ${adminEmail}`);
+          }
+        } catch (e) {
+          console.error("Bootstrap background task failed:", e.message);
         }
-      } else {
-        await Employee.create(adminData);
-        console.log(`✅ Bootstrap: Created new admin account: ${adminEmail}`);
-      }
-
-      // --- DATABASE INDEX CLEANUP ---
-      try {
-        const Product = require('./models/Product');
-        // Drop the problematic unique index on the 'size' field if it exists
-        await Product.collection.dropIndex("size_1");
-        console.log("Successfully validated 'size' index status");
-      } catch (err) {
-        // Error code 27 means the index doesn't exist, which is our goal
-        if (err.code !== 27) {
-          console.log("Database index cleanup note:", err.message);
-        }
-      }
+      })();
 
       return true;
     } catch (err) {
       console.error("Initialization failed:", err.message);
-      initPromise = null; // Allow retry on next request
+      initPromise = null;
       return false;
     }
   })();
