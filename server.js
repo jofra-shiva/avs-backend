@@ -142,12 +142,24 @@ app.use(async (req, res, next) => {
     return next();
   }
 
+  // Pre-check for MONGO_URI
+  if (!process.env.MONGO_URI) {
+    console.error('[Critical] MONGO_URI is missing from environment variables');
+    return res.status(503).json({
+      message: 'Database Configuration Error',
+      details: 'MONGO_URI is not defined. Please check environment variables on Vercel.'
+    });
+  }
+
   const success = await initializeApp();
   
   if (!success) {
-    console.error(`[Init] Initialization failed for ${req.method} ${req.originalUrl}`);
+    const dbStatus = mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected';
+    console.error(`[Init] Initialization failed for ${req.method} ${req.originalUrl} | DB: ${dbStatus}`);
     return res.status(503).json({ 
-      message: 'System is initializing or database is unavailable. Please try again in a moment.' 
+      message: 'System Initialization Error',
+      details: dbStatus === 'Disconnected' ? 'Database connection could not be established.' : 'System bootstrap failed. Check server logs.',
+      dbStatus 
     });
   }
   next();
