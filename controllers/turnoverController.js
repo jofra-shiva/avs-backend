@@ -1,7 +1,56 @@
+const Turnover = require('../models/Turnover');
 const Sale = require('../models/Sale');
 const Expense = require('../models/Expense');
 const Production = require('../models/Production');
 const Product = require('../models/Product');
+
+// Get all manual turnover records
+exports.getManualTurnovers = async (req, res) => {
+  try {
+    const turnovers = await Turnover.find({}).sort({ date: -1 });
+    res.json(turnovers);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching turnover records', error: error.message });
+  }
+};
+
+// Create a manual turnover record
+exports.createTurnover = async (req, res) => {
+  try {
+    const { date, amount, category, notes } = req.body;
+    const turnover = await Turnover.create({
+      date: date || new Date(),
+      amount: Number(amount),
+      category: category || 'General Sales',
+      notes: notes || ''
+    });
+    res.status(201).json(turnover);
+  } catch (error) {
+    res.status(400).json({ message: 'Error creating turnover record', error: error.message });
+  }
+};
+
+// Update a turnover record
+exports.updateTurnover = async (req, res) => {
+  try {
+    const turnover = await Turnover.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!turnover) return res.status(404).json({ message: 'Record not found' });
+    res.json(turnover);
+  } catch (error) {
+    res.status(400).json({ message: 'Error updating record', error: error.message });
+  }
+};
+
+// Delete a turnover record
+exports.deleteTurnover = async (req, res) => {
+  try {
+    const turnover = await Turnover.findByIdAndDelete(req.params.id);
+    if (!turnover) return res.status(404).json({ message: 'Record not found' });
+    res.json({ message: 'Record deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting record', error: error.message });
+  }
+};
 
 exports.getAnalytics = async (req, res) => {
   try {
@@ -30,23 +79,18 @@ exports.getAnalytics = async (req, res) => {
     const salesAll = await Sale.find({}).lean();
     const expensesAll = await Expense.find({}).lean();
     const productionsAll = await Production.find({}).lean();
+    const manualTurnovers = await Turnover.find({}).lean();
     
     const parseDbDate = (dateStr) => {
       if (!dateStr) return null;
+      if (dateStr instanceof Date) return dateStr.toISOString().split('T')[0];
       try {
-        // 1. Check for DD-MM-YYYY or DD/MM/YYYY (with optional time after comma or space)
         const dmyMatch = dateStr.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
-        if (dmyMatch) {
-          return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
-        }
+        if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
 
-        // 2. Check for YYYY-MM-DD or YYYY/MM/DD
         const ymdMatch = dateStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
-        if (ymdMatch) {
-          return `${ymdMatch[1]}-${ymdMatch[2].padStart(2, '0')}-${ymdMatch[3].padStart(2, '0')}`;
-        }
+        if (ymdMatch) return `${ymdMatch[1]}-${ymdMatch[2].padStart(2, '0')}-${ymdMatch[3].padStart(2, '0')}`;
 
-        // 3. Native Date fallback for ISO formats
         const dObj = new Date(dateStr);
         if (!isNaN(dObj.getTime())) {
            const y = dObj.getFullYear();
@@ -66,7 +110,12 @@ exports.getAnalytics = async (req, res) => {
     };
 
     const getMonthStr = (date) => {
-      const d = typeof date === 'string' ? new Date(date) : date;
+      let d;
+      if (date instanceof Date) d = date;
+      else {
+        const parsed = parseDbDate(date);
+        d = parsed ? new Date(parsed) : new Date(date);
+      }
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     };
 
@@ -76,8 +125,6 @@ exports.getAnalytics = async (req, res) => {
 
     let currentPeriodIncome = 0;
     let prevPeriodIncome = 0;
-    let currentPeriodProd = 0;
-    let prevPeriodProd = 0;
 
     const monthlyIncomeData = {};
     const monthlyProductionData = {};
@@ -92,7 +139,6 @@ exports.getAnalytics = async (req, res) => {
     const prevContextDate = new Date(contextDate.getFullYear(), contextDate.getMonth() - 1, 1);
     const prevContextMonthStr = getMonthStr(prevContextDate);
 
-    // Padding for charts (Jan through Dec for selected year)
     const contextYear = contextDate.getFullYear();
     for (let i = 0; i < 12; i++) {
       const d = new Date(contextYear, i, 1);
@@ -101,20 +147,18 @@ exports.getAnalytics = async (req, res) => {
       monthlyProductionData[mStr] = 0;
     }
 
+    // Process Sales (Calculated Turnover)
     salesAll.forEach(sale => {
       let d = parseDbDate(sale.date);
       let mStr = d ? getMonthStr(d) : "History";
       const amt = Number(sale.totalAmount || 0);
 
       if (fullTrendIncomeData[mStr] !== undefined) fullTrendIncomeData[mStr] += amt;
-
       if (mStr === contextMonthStr) currentPeriodIncome += amt;
       if (mStr === prevContextMonthStr) prevPeriodIncome += amt;
 
       if (isWithinRange(sale.date, startDate, endDate)) {
         totalIncome += amt;
-        if (!monthlyIncomeData[mStr]) monthlyIncomeData[mStr] = 0;
-        monthlyIncomeData[mStr] += amt;
         if (sale.saleItems) {
           sale.saleItems.forEach(item => {
             if (item.size) {
@@ -122,6 +166,21 @@ exports.getAnalytics = async (req, res) => {
             }
           });
         }
+      }
+    });
+
+    // Process Manual Turnovers (Explicit Turnover records)
+    manualTurnovers.forEach(t => {
+      let d = parseDbDate(t.date);
+      let mStr = d ? getMonthStr(d) : "History";
+      const amt = Number(t.amount || 0);
+
+      if (fullTrendIncomeData[mStr] !== undefined) fullTrendIncomeData[mStr] += amt;
+      if (mStr === contextMonthStr) currentPeriodIncome += amt;
+      if (mStr === prevContextMonthStr) prevPeriodIncome += amt;
+
+      if (isWithinRange(t.date, startDate, endDate)) {
+        totalIncome += amt;
       }
     });
 
@@ -140,9 +199,6 @@ exports.getAnalytics = async (req, res) => {
       const mStr = getMonthStr(d);
       const qty = Number(prod.quantity || 0);
 
-      if (mStr === contextMonthStr) currentPeriodProd += qty;
-      if (mStr === prevContextMonthStr) prevPeriodProd += qty;
-
       if (isWithinRange(prod.date, startDate, endDate)) {
         totalProductionQty += qty;
         if (monthlyProductionData[mStr] !== undefined) monthlyProductionData[mStr] += qty;
@@ -153,7 +209,6 @@ exports.getAnalytics = async (req, res) => {
     });
 
     const formatChartLabel = m => {
-      if (!m.includes('-')) return m;
       const [year, month] = m.split('-');
       const date = new Date(year, month - 1);
       return date.toLocaleString('default', { month: 'short' });
@@ -163,22 +218,14 @@ exports.getAnalytics = async (req, res) => {
       name: formatChartLabel(m), Income: fullTrendIncomeData[m]
     }));
 
-    const monthlyProductionChart = Object.keys(monthlyProductionData).sort().map(m => ({
-      name: formatChartLabel(m), Production: monthlyProductionData[m]
-    }));
-
     res.json({
       financials: {
         totalIncome, totalExpenses, netProfit: totalIncome - totalExpenses,
         currentMonthIncome: currentPeriodIncome, prevMonthIncome: prevPeriodIncome,
         incomeGrowthPercent: prevPeriodIncome ? (((currentPeriodIncome - prevPeriodIncome) / prevPeriodIncome) * 100).toFixed(1) : (currentPeriodIncome ? 100 : 0)
       },
-      production: {
-        totalProductionQty, currentMonthProduction: currentPeriodProd, prevMonthProduction: prevPeriodProd,
-        prodGrowthPercent: prevPeriodProd ? (((currentPeriodProd - prevPeriodProd) / prevPeriodProd) * 100).toFixed(1) : (currentPeriodProd ? 100 : 0)
-      },
       charts: {
-        fullMonthlyChart, monthlyProductionChart,
+        fullMonthlyChart,
         salesSizeChart: Object.keys(salesSizeDataMap).map(s => ({ name: s, SalesQty: salesSizeDataMap[s] })),
         prodSizeChart: Object.keys(productionSizeDataMap).map(s => ({ name: s, ProdQty: productionSizeDataMap[s] })),
         expenseCatChart: Object.keys(expenseCategoryMap).map(cat => ({ name: cat, Amount: expenseCategoryMap[cat] })).sort((a,b) => b.Amount - a.Amount)
@@ -189,5 +236,4 @@ exports.getAnalytics = async (req, res) => {
   }
 };
 
-// Alias for compatibility with routes
 exports.getTurnoverSummary = exports.getAnalytics;
