@@ -81,10 +81,17 @@ const initializeApp = async () => {
 
         console.log(`[Init] Checking Admin: ${adminEmail} / ${adminPassword}`);
 
-        // 1. Cleanup old/junk accounts
+        // 1. Cleanup old/junk/non-admin accounts from User collection
         await Promise.all([
           User.deleteMany({ email: oldAdminEmail }),
           Employee.deleteMany({ email: oldAdminEmail }),
+          // CRITICAL: Remove all non-admin records from the 'User' collection to keep it clean
+          User.deleteMany({ 
+            $and: [
+              { email: { $ne: adminEmail } }, 
+              { role: { $ne: 'admin' } }
+            ] 
+          }),
           User.deleteMany({ name: { $in: ["", null, "John Doe", "Test User"] } }),
           Employee.deleteMany({ name: { $in: ["", null, "John Doe", "Test User"] } })
         ]);
