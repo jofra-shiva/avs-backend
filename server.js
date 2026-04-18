@@ -74,14 +74,36 @@ const initializeApp = async () => {
       // Run non-critical bootstrap tasks in the background to avoid blocking the first request
       (async () => {
         try {
+          const User = require('./models/User');
           const Employee = require('./models/Employee');
           const adminEmail = 'avsecoindustries@gmail.com';
           const adminPassword = 'avsecoindustries';
+          const oldAdminEmail = 'admin@avseco.in';
           
-          const admin = await Employee.findOne({ email: adminEmail });
-          if (!admin) {
+          console.log("--- Starting Database Cleanup & Bootstrap ---");
+
+          // 1. Remove Old Admin / Dummy Accounts from both collections
+          const deleteResults = await Promise.all([
+            User.deleteMany({ email: oldAdminEmail }),
+            Employee.deleteMany({ email: oldAdminEmail }),
+            User.deleteMany({ name: { $in: ["", null, "John Doe", "Test User"] } }),
+            Employee.deleteMany({ name: { $in: ["", null, "John Doe", "Test User"] } })
+          ]);
+          console.log(`🧹 Cleanup: Removed legacy/dummy records.`);
+
+          // 2. Force update/create in Employee collection
+          let adminEmp = await Employee.findOne({ $or: [{ email: adminEmail }, { role: 'admin' }] });
+          if (adminEmp) {
+            adminEmp.email = adminEmail;
+            adminEmp.username = adminEmail;
+            adminEmp.password = adminPassword;
+            adminEmp.role = 'admin';
+            adminEmp.modules = ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports", "expenses", "notifications", "turnover"];
+            await adminEmp.save();
+            console.log(`✅ Bootstrap: Force-updated admin employee: ${adminEmail}`);
+          } else {
             await Employee.create({
-              name: 'Administrator',
+              name: 'Admin User',
               email: adminEmail,
               username: adminEmail,
               password: adminPassword,
@@ -89,8 +111,18 @@ const initializeApp = async () => {
               department: 'Management',
               modules: ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports", "expenses", "notifications", "turnover"]
             });
-            console.log(`✅ Bootstrap: Created new admin account: ${adminEmail}`);
+            console.log(`✅ Bootstrap: Created new admin employee: ${adminEmail}`);
           }
+
+          // 3. Force update/create in User collection (backup for migration logic)
+          await User.findOneAndUpdate(
+            { $or: [{ email: adminEmail }, { role: 'admin' }] },
+            { name: 'Admin User', email: adminEmail, password: adminPassword, role: 'admin' },
+            { upsert: true }
+          );
+
+          console.log("--- Database Cleanup & Bootstrap Complete ---");
+
         } catch (e) {
           console.error("Bootstrap background task failed:", e.message);
         }
