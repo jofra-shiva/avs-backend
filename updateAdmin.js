@@ -9,8 +9,8 @@ const updateAdmin = async () => {
     await mongoose.connect(process.env.MONGO_URI, { family: 4 });
     console.log('Connected to MongoDB...');
 
-    const email = 'admin@avseco.in';
-    const password = '12345678';
+    const email = 'avsecoindustries@gmail.com';
+    const password = 'avsecoindustries';
     const name = 'Admin User';
 
     let user = await User.findOne({ email });

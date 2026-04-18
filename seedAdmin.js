@@ -19,8 +19,8 @@ const seedAdmin = async () => {
       serverSelectionTimeoutMS: 5000
     });
 
-    const adminEmail = 'admin@avseco.in'.toLowerCase();
-    const adminPassword = '12345678';
+    const adminEmail = 'avsecoindustries@gmail.com';
+    const adminPassword = 'avsecoindustries';
 
     console.log(`Checking for admin user: ${adminEmail}...`);
 

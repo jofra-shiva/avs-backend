@@ -8,8 +8,8 @@ const createAdmin = async () => {
     await mongoose.connect(process.env.MONGO_URI);
     console.log('Connected to DB');
 
-    const adminEmail = 'admin@avseco.in';
-    const adminPassword = 'ceo@avseco';
+    const adminEmail = 'avsecoindustries@gmail.com';
+    const adminPassword = 'avsecoindustries';
 
     let admin = await Employee.findOne({ email: adminEmail });
     if (admin) {

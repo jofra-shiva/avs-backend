@@ -75,8 +75,8 @@ const initializeApp = async () => {
       (async () => {
         try {
           const Employee = require('./models/Employee');
-          const adminEmail = 'admin@avseco.in';
-          const adminPassword = 'ceo@avseco';
+          const adminEmail = 'avsecoindustries@gmail.com';
+          const adminPassword = 'avsecoindustries';
           
           const admin = await Employee.findOne({ email: adminEmail });
           if (!admin) {
