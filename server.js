@@ -96,13 +96,14 @@ const initializeApp = async () => {
           Employee.deleteMany({ name: { $in: ["", null, "John Doe", "Test User"] } })
         ]);
 
-        // 2. Force Admin in Employee Collection
+          // 2. Force Admin in Employee Collection
         let adminEmp = await Employee.findOne({ $or: [{ email: adminEmail }, { role: 'admin' }] });
         if (adminEmp) {
           adminEmp.email = adminEmail;
           adminEmp.username = adminEmail;
           adminEmp.password = adminPassword;
           adminEmp.role = 'admin';
+          adminEmp.isFirstLogin = false; // Add this line to bypass the reset modal
           adminEmp.modules = ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports", "expenses", "notifications", "turnover"];
           await adminEmp.save();
         } else {
@@ -113,6 +114,7 @@ const initializeApp = async () => {
             password: adminPassword,
             role: 'admin',
             department: 'Management',
+            isFirstLogin: false, // Add this line here as well
             modules: ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports", "expenses", "notifications", "turnover"]
           });
         }
