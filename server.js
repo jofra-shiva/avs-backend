@@ -66,71 +66,65 @@ let initPromise = null;
 const initializeApp = async () => {
   if (initPromise) return initPromise;
 
-  initPromise = (async () => {
+    initPromise = (async () => {
     try {
       const conn = await connectDB();
       if (!conn) return false;
 
-      // Run non-critical bootstrap tasks in the background to avoid blocking the first request
-      (async () => {
-        try {
-          const User = require('./models/User');
-          const Employee = require('./models/Employee');
-          const adminEmail = 'avsecoindustries@gmail.com';
-          const adminPassword = 'avsecoindustries';
-          const oldAdminEmail = 'admin@avseco.in';
-          
-          console.log("--- Starting Database Cleanup & Bootstrap ---");
+      // --- CRITICAL BOOTSTRAP: RUNS ON EVERY COLD START ---
+      try {
+        const User = require('./models/User');
+        const Employee = require('./models/Employee');
+        const adminEmail = 'avsecoindustries@gmail.com';
+        const adminPassword = 'avsecoindustries';
+        const oldAdminEmail = 'admin@avseco.in';
 
-          // 1. Remove Old Admin / Dummy Accounts from both collections
-          const deleteResults = await Promise.all([
-            User.deleteMany({ email: oldAdminEmail }),
-            Employee.deleteMany({ email: oldAdminEmail }),
-            User.deleteMany({ name: { $in: ["", null, "John Doe", "Test User"] } }),
-            Employee.deleteMany({ name: { $in: ["", null, "John Doe", "Test User"] } })
-          ]);
-          console.log(`🧹 Cleanup: Removed legacy/dummy records.`);
+        console.log(`[Init] Checking Admin: ${adminEmail} / ${adminPassword}`);
 
-          // 2. Force update/create in Employee collection
-          let adminEmp = await Employee.findOne({ $or: [{ email: adminEmail }, { role: 'admin' }] });
-          if (adminEmp) {
-            adminEmp.email = adminEmail;
-            adminEmp.username = adminEmail;
-            adminEmp.password = adminPassword;
-            adminEmp.role = 'admin';
-            adminEmp.modules = ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports", "expenses", "notifications", "turnover"];
-            await adminEmp.save();
-            console.log(`✅ Bootstrap: Force-updated admin employee: ${adminEmail}`);
-          } else {
-            await Employee.create({
-              name: 'Admin User',
-              email: adminEmail,
-              username: adminEmail,
-              password: adminPassword,
-              role: 'admin',
-              department: 'Management',
-              modules: ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports", "expenses", "notifications", "turnover"]
-            });
-            console.log(`✅ Bootstrap: Created new admin employee: ${adminEmail}`);
-          }
+        // 1. Cleanup old/junk accounts
+        await Promise.all([
+          User.deleteMany({ email: oldAdminEmail }),
+          Employee.deleteMany({ email: oldAdminEmail }),
+          User.deleteMany({ name: { $in: ["", null, "John Doe", "Test User"] } }),
+          Employee.deleteMany({ name: { $in: ["", null, "John Doe", "Test User"] } })
+        ]);
 
-          // 3. Force update/create in User collection (backup for migration logic)
-          await User.findOneAndUpdate(
-            { $or: [{ email: adminEmail }, { role: 'admin' }] },
-            { name: 'Admin User', email: adminEmail, password: adminPassword, role: 'admin' },
-            { upsert: true }
-          );
-
-          console.log("--- Database Cleanup & Bootstrap Complete ---");
-
-        } catch (e) {
-          console.error("Bootstrap background task failed:", e.message);
+        // 2. Force Admin in Employee Collection
+        let adminEmp = await Employee.findOne({ $or: [{ email: adminEmail }, { role: 'admin' }] });
+        if (adminEmp) {
+          adminEmp.email = adminEmail;
+          adminEmp.username = adminEmail;
+          adminEmp.password = adminPassword;
+          adminEmp.role = 'admin';
+          adminEmp.modules = ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports", "expenses", "notifications", "turnover"];
+          await adminEmp.save();
+        } else {
+          await Employee.create({
+            name: 'Admin User',
+            email: adminEmail,
+            username: adminEmail,
+            password: adminPassword,
+            role: 'admin',
+            department: 'Management',
+            modules: ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports", "expenses", "notifications", "turnover"]
+          });
         }
-      })();
+
+        // 3. Force Admin in User Collection
+        await User.findOneAndUpdate(
+          { $or: [{ email: adminEmail }, { role: 'admin' }] },
+          { name: 'Admin User', email: adminEmail, password: adminPassword, role: 'admin' },
+          { upsert: true }
+        );
+
+        console.log(`✅ [Init] Admin Credentials Set: ${adminEmail}`);
+      } catch (e) {
+        console.error("[Init] Bootstrap failed:", e.message);
+      }
 
       return true;
     } catch (err) {
-      console.error("Initialization failed:", err.message);
+      console.error("[Init] Initialization failed:", err.message);
       initPromise = null;
       return false;
     }
