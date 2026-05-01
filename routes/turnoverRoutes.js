@@ -6,10 +6,17 @@ const { verifyToken, checkAccess } = require('../middleware/authMiddleware');
 router.use(verifyToken);
 router.use(checkAccess('turnover'));
 
-router.get('/', turnoverController.getTurnoverSummary);
+// Analytics Summary
 router.get('/analytics', turnoverController.getAnalytics);
+router.get('/summary', turnoverController.getTurnoverSummary);
 
-// Legacy/Compatibility support
+// Manual Record CRUD
+router.get('/', turnoverController.getManualTurnovers);
+router.post('/', turnoverController.createTurnover);
+router.put('/:id', turnoverController.updateTurnover);
+router.delete('/:id', turnoverController.deleteTurnover);
+
+// Legacy support
 router.get('/monthly', turnoverController.getAnalytics);
 
 module.exports = router;

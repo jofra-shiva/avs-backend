@@ -1,10 +1,16 @@
 const nodemailer = require('nodemailer');
 
 const sendEmail = async ({ to, subject, html }) => {
-  if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
+  const smtpEmail = process.env.SMTP_EMAIL;
+  const smtpPass = process.env.SMTP_PASSWORD;
+
+  if (!smtpEmail || !smtpPass) {
     console.error('ERROR: SMTP_EMAIL or SMTP_PASSWORD environment variables are missing.');
     throw new Error('CONFIG_ERROR: Email configuration is incomplete on the server dashboard.');
   }
+
+  console.log(`[SMTP] Initializing transporter for: ${smtpEmail.split('@')[0].slice(0, 3)}...${smtpEmail.split('@')[0].slice(-1)}@${smtpEmail.split('@')[1]}`);
+  console.log(`[SMTP] Password length: ${smtpPass.length} chars (Masked: ${smtpPass.slice(0, 2)}...${smtpPass.slice(-2)})`);
 
   const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -12,8 +18,8 @@ const sendEmail = async ({ to, subject, html }) => {
     port: 465, // Using port 465 for SSL (More reliable on Vercel)
     secure: true, // Port 465 requires secure: true
     auth: {
-      user: process.env.SMTP_EMAIL,
-      pass: process.env.SMTP_PASSWORD,
+      user: smtpEmail,
+      pass: smtpPass,
     },
   });
 
