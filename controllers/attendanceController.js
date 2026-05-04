@@ -21,16 +21,23 @@ const getAttendanceByDate = async (req, res) => {
 const upsertAttendance = async (req, res) => {
   try {
     const { date, records } = req.body;
+    if (!date || !records || !Array.isArray(records)) {
+      return res.status(400).json({ message: "Invalid payload: date and records are required." });
+    }
     
-    const operations = records.map(record => ({
-      updateOne: {
-        filter: { date, employee: record.employee },
-        update: { $set: record },
-        upsert: true
-      }
-    }));
+    const operations = records
+      .filter(record => record && record.employee)
+      .map(record => ({
+        updateOne: {
+          filter: { date, employee: record.employee },
+          update: { $set: { ...record, date } },
+          upsert: true
+        }
+      }));
 
-    await Attendance.bulkWrite(operations);
+    if (operations.length > 0) {
+      await Attendance.bulkWrite(operations);
+    }
     const updatedRecords = await Attendance.find({ date });
 
     // Trigger notification for Admin

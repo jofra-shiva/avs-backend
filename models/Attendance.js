@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const attendanceSchema = mongoose.Schema({
   date: { type: String, required: true }, // YYYY-MM-DD
   employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
-  status: { type: String, enum: ['present', 'absent', 'half'], default: 'present' },
+  status: { type: String, enum: ['present', 'absent', 'half', 'leave'], default: 'present' },
   note: { type: String },
   halfDayTime: {
     from: { type: String },
