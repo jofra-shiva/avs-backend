@@ -39,17 +39,8 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow non-browser requests (like Postman or server-to-server)
-    if (!origin) return callback(null, true);
-    
-    const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
-    
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.warn(`Blocked by CORS: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
+    // Allow any origin to avoid CORS issues
+    callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
