@@ -7,7 +7,18 @@ const { createNotification } = require('../utils/notificationUtils');
 // @access  Private
 const getNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find({ recipient: req.employee._id })
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    // Auto-cleanup: Explicitly delete notifications older than 24 hours to enforce the rule
+    await Notification.deleteMany({
+      recipient: req.employee._id,
+      createdAt: { $lt: twentyFourHoursAgo }
+    });
+
+    const notifications = await Notification.find({ 
+      recipient: req.employee._id,
+      createdAt: { $gte: twentyFourHoursAgo }
+    })
       .sort({ createdAt: -1 })
       .limit(50)
       .populate('sender', 'name avatar');
@@ -98,10 +109,19 @@ const respondToNotification = async (req, res) => {
       return res.status(404).json({ message: 'Notification not found' });
     }
 
+    // Auto-mark original as read
+    originalNotif.isRead = true;
+    await originalNotif.save();
+
+    // If status is 'ok', don't send any feedback back, just end it here
+    if (status === 'ok') {
+      return res.status(200).json({ message: 'Notification acknowledged successfully' });
+    }
+
     // Determine recipient - send back to sender or all admins if system sent
     let recipientId = originalNotif.sender || null;
     
-    const statusLabel = status === 'ok' ? '✅ ACKNOWLEDGED' : '❌ DISAGREED / PROBLEM';
+    const statusLabel = '❌ DISAGREED / PROBLEM';
     const message = `Response to "${originalNotif.title}":\n\nStatus: ${statusLabel}\nReason: ${reason || 'N/A'}`;
 
     await createNotification({
@@ -112,10 +132,6 @@ const respondToNotification = async (req, res) => {
       message,
       link: '/admin/push-notifications'
     });
-
-    // Auto-mark original as read
-    originalNotif.isRead = true;
-    await originalNotif.save();
 
     res.status(201).json({ message: 'Response sent successfully' });
   } catch (error) {
