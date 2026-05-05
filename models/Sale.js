@@ -6,6 +6,10 @@ const saleItemSchema = mongoose.Schema({
   size: { type: String, required: true },
   qty: { type: Number, required: true },
   amount: { type: Number, required: true },
+  rate: { type: Number },
+  mrp: { type: Number },
+  gstRate: { type: Number, default: 0 },
+  gstAmount: { type: Number, default: 0 },
   unit: { type: String, default: 'pcs' },
   hsn: { type: String }
 });
