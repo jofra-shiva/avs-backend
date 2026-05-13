@@ -14,7 +14,7 @@ const connectDB = async () => {
   if (!cached.promise) {
     const opts = {
       bufferCommands: true,
-      serverSelectionTimeoutMS: 15000, 
+      serverSelectionTimeoutMS: 5000, 
       socketTimeoutMS: 60000,
       family: 4,
       maxPoolSize: 10, // Maintain up to 10 socket connections
