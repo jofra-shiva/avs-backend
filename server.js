@@ -24,6 +24,9 @@ const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const turnoverRoutes = require('./routes/turnoverRoutes');
 
+const User = require('./models/User');
+const Employee = require('./models/Employee');
+
 const app = express();
 
 // Enable CORS using standard middleware for better compatibility
@@ -39,7 +42,7 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow any origin to avoid CORS issues
+    // Allow any origin for better compatibility, or restrict to allowedOrigins in production
     callback(null, true);
   },
   credentials: true,
@@ -59,44 +62,48 @@ let initPromise = null;
 const initializeApp = async () => {
   if (initPromise) return initPromise;
 
-    initPromise = (async () => {
+  initPromise = (async () => {
     try {
       const conn = await connectDB();
-      if (!conn) return false;
+      if (!conn) {
+        console.error("❌ [Init] Database connection failed.");
+        return false;
+      }
 
-      // --- CRITICAL BOOTSTRAP: RUNS ON EVERY COLD START ---
+      // --- CRITICAL BOOTSTRAP: RUNS ONCE PER COLD START ---
       try {
-        const User = require('./models/User');
-        const Employee = require('./models/Employee');
         const adminEmail = 'avsecoindustries@gmail.com';
         const adminPassword = 'avsecoindustries';
         const oldAdminEmail = 'admin@avseco.in';
 
-        console.log(`[Init] Checking Admin: ${adminEmail} / ${adminPassword}`);
+        console.log(`[Init] Validating Admin Account: ${adminEmail}`);
 
         // 1. Cleanup old/junk/non-admin accounts from User collection
-        await Promise.all([
-          User.deleteMany({ email: oldAdminEmail }),
-          Employee.deleteMany({ email: oldAdminEmail }),
-          // CRITICAL: Remove all non-admin records from the 'User' collection to keep it clean
-          User.deleteMany({ 
+        // Use individual catch blocks to ensure one failure doesn't stop the rest
+        const cleanupTasks = [
+          User.deleteMany({ email: oldAdminEmail }).catch(e => console.error("[Init] Error cleaning old admin user:", e.message)),
+          Employee.deleteMany({ email: oldAdminEmail }).catch(e => console.error("[Init] Error cleaning old admin employee:", e.message)),
+          // Remove non-admin records from the 'User' collection
+          User.deleteMany({
             $and: [
-              { email: { $ne: adminEmail } }, 
+              { email: { $ne: adminEmail } },
               { role: { $ne: 'admin' } }
-            ] 
-          }),
-          User.deleteMany({ name: { $in: ["", null, "John Doe", "Test User"] } }),
-          Employee.deleteMany({ name: { $in: ["", null, "John Doe", "Test User"] } })
-        ]);
+            ]
+          }).catch(e => console.error("[Init] Error cleaning non-admin users:", e.message)),
+          User.deleteMany({ name: { $in: ["", null, "John Doe", "Test User"] } }).catch(e => console.error("[Init] Error cleaning junk users:", e.message)),
+          Employee.deleteMany({ name: { $in: ["", null, "John Doe", "Test User"] } }).catch(e => console.error("[Init] Error cleaning junk employees:", e.message))
+        ];
 
-          // 2. Force Admin in Employee Collection
+        await Promise.all(cleanupTasks);
+
+        // 2. Force Admin in Employee Collection
         let adminEmp = await Employee.findOne({ $or: [{ email: adminEmail }, { role: 'admin' }] });
         if (adminEmp) {
           adminEmp.email = adminEmail;
           adminEmp.username = adminEmail;
           adminEmp.password = adminPassword;
           adminEmp.role = 'admin';
-          adminEmp.isFirstLogin = false; // Add this line to bypass the reset modal
+          adminEmp.isFirstLogin = false;
           adminEmp.modules = ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports", "expenses", "notifications", "turnover"];
           await adminEmp.save();
         } else {
@@ -107,7 +114,7 @@ const initializeApp = async () => {
             password: adminPassword,
             role: 'admin',
             department: 'Management',
-            isFirstLogin: false, // Add this line here as well
+            isFirstLogin: false,
             modules: ["dashboard", "stock", "products", "production", "employees", "attendance", "clients", "sales", "reports", "expenses", "notifications", "turnover"]
           });
         }
@@ -119,15 +126,15 @@ const initializeApp = async () => {
           { upsert: true }
         );
 
-        console.log(`✅ [Init] Admin Credentials Set: ${adminEmail}`);
+        console.log(`✅ [Init] Admin Credentials Verified for ${adminEmail}`);
       } catch (e) {
-        console.error("[Init] Bootstrap failed:", e.message);
+        console.error("⚠️ [Init] Bootstrap warning (system may still work):", e.message);
       }
 
       return true;
     } catch (err) {
-      console.error("[Init] Initialization failed:", err.message);
-      initPromise = null;
+      console.error("❌ [Init] Initialization CRITICAL error:", err.message);
+      initPromise = null; // Allow retry on next request
       return false;
     }
   })();
@@ -137,31 +144,31 @@ const initializeApp = async () => {
 
 // Global middleware to ensure initialization is complete before handling requests
 app.use(async (req, res, next) => {
-  console.log(`[Request] ${req.method} ${req.originalUrl}`);
-  
   // Skip initialization check for health endpoint
   if (req.originalUrl === '/api/health') {
     return next();
   }
+
+  console.log(`[Request] ${req.method} ${req.originalUrl}`);
 
   // Pre-check for MONGO_URI
   if (!process.env.MONGO_URI) {
     console.error('[Critical] MONGO_URI is missing from environment variables');
     return res.status(503).json({
       message: 'Database Configuration Error',
-      details: 'MONGO_URI is not defined. Please check environment variables on Vercel.'
+      details: 'MONGO_URI is not defined. Please check environment variables.'
     });
   }
 
   const success = await initializeApp();
-  
+
   if (!success) {
     const dbStatus = mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected';
-    console.error(`[Init] Initialization failed for ${req.method} ${req.originalUrl} | DB: ${dbStatus}`);
-    return res.status(503).json({ 
-      message: 'System Initialization Error',
-      details: dbStatus === 'Disconnected' ? 'Database connection could not be established.' : 'System bootstrap failed. Check server logs.',
-      dbStatus 
+    console.error(`[Init] System not ready for ${req.method} ${req.originalUrl} | DB: ${dbStatus}`);
+    return res.status(503).json({
+      message: 'System Initializing',
+      details: dbStatus === 'Disconnected' ? 'Database connection could not be established.' : 'System bootstrap is in progress or failed. Please refresh in a moment.',
+      dbStatus
     });
   }
   next();
