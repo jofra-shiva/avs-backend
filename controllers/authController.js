@@ -349,6 +349,34 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// @desc    Get logged-in employee's own salary info + last-3-month expense entries
+// @route   GET /api/auth/my-salary
+// @access  Private
+const getMySalary = async (req, res) => {
+  try {
+    const Expense = require('../models/Expense');
+    const employee = await Employee.findById(req.employee._id).select('name salary');
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Fetch Salary-category expenses for this employee by name match
+    const nameRegex = new RegExp(employee.name.trim(), 'i');
+    const salaryExpenses = await Expense.find({
+      category: 'Salary',
+      description: { $regex: nameRegex }
+    }).sort({ date: -1 }).limit(6);
+
+    res.json({
+      salary: employee.salary || 0,
+      name: employee.name,
+      salaryExpenses: salaryExpenses
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -357,5 +385,6 @@ module.exports = {
   updateMe,
   getMe,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getMySalary
 };
